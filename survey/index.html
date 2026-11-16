@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>デモ体験アンケート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700&display=swap">
+<style>
+  /* レイアウト：1列の用紙。設問はセクションごとに区切り、5段階は横一列（狭い画面では縦に積む） */
+  :root {
+    --bg: #f4f6fa;
+    --paper: #ffffff;
+    --ink: #1d2433;
+    --muted: #5b6476;
+    --line: #d9dde5;
+    --accent: #2f6fde;
+    --accent-soft: #e7efff;
+    --ok: #1f8a4c;
+    --warn: #b45309;
+    --warn-soft: #fff4e5;
+    --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    --font-head: "Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11151d; --paper: #1a202b; --ink: #e6e9ef; --muted: #a3abba; --line: #2e3646;
+      --accent: #6d9cff; --accent-soft: #1f2c47; --ok: #4cc283; --warn: #f0a24a; --warn-soft: #3a2a14;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11151d; --paper: #1a202b; --ink: #e6e9ef; --muted: #a3abba; --line: #2e3646;
+    --accent: #6d9cff; --accent-soft: #1f2c47; --ok: #4cc283; --warn: #f0a24a; --warn-soft: #3a2a14;
+    color-scheme: dark;
+  }
+
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+  .wrap { max-width: 760px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+  h1, h2 { font-family: var(--font-head); text-wrap: balance; line-height: 1.4; margin: 0; }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.15rem; }
+  p { margin: 0; }
+  a { color: var(--accent); }
+  .lead { display: grid; gap: 10px; }
+  .lead .meta { color: var(--muted); font-size: .9rem; }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: grid; gap: 18px; min-width: 0; }
+  .sec-head { display: grid; gap: 4px; }
+  .sec-head .kicker { font-size: .78rem; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+  .sec-head p { color: var(--muted); font-size: .9rem; }
+
+  .demo-link { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-weight: 700; border-radius: 8px; padding: 9px 18px; text-decoration: none; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .status { border-radius: 8px; padding: 10px 14px; font-size: .9rem; background: var(--accent-soft); }
+  .status.warn { background: var(--warn-soft); color: var(--ink); }
+
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+  legend { padding: 0; font-weight: 700; margin-bottom: 8px; }
+  legend .q { color: var(--accent); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  .note { color: var(--muted); font-size: .85rem; font-weight: 400; }
+  .q-list { display: grid; gap: 22px; }
+
+  .choices { display: grid; gap: 6px; }
+  .choice { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .choice input { margin-top: 6px; accent-color: var(--accent); }
+
+  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .likert label { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; text-align: center; font-size: .8rem; color: var(--muted); }
+  .likert label b { font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .likert label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+  .likert input { position: absolute; opacity: 0; pointer-events: none; }
+  .likert label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 520px) {
+    .likert { grid-template-columns: 1fr; }
+    .likert label { grid-template-columns: 2em 1fr; justify-items: start; text-align: left; align-items: center; }
+  }
+
+  textarea { width: 100%; box-sizing: border-box; min-height: 90px; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; resize: vertical; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .msg { font-size: .9rem; color: var(--warn); }
+  .msg.ok { color: var(--ok); }
+
+  .done { display: grid; gap: 12px; }
+  .copybox { width: 100%; box-sizing: border-box; min-height: 180px; font-size: .85rem; }
+
+  /* 結果（実施者だけに表示） */
+  .results { display: grid; gap: 16px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 24px; }
+  .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; font-family: var(--font-head); }
+  .stat span { color: var(--muted); font-size: .85rem; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { height: 8px; border-radius: 4px; background: var(--accent-soft); min-width: 80px; }
+  .bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+  .free { display: grid; gap: 8px; }
+  .foot { text-align: center; }
+  .free blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--ink); white-space: pre-wrap; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="lead">
+    <h1>デモ体験アンケート</h1>
+    <p>「単一DB」「DB＋ハッシュ」「ブロックチェーン」の3つの記録の方式を比べるデモを体験していただき、ありがとうございます。デモを見て<b>何が分かったか</b>を確かめるためのアンケートです。</p>
+    <p class="meta">所要時間 およそ5分 ・ 無記名 ・ 回答は卒業研究の評価にだけ使います</p>
+  </header>
+
+  <section class="card" aria-labelledby="demoHead">
+    <div class="sec-head">
+      <span class="kicker">はじめに</span>
+      <h2 id="demoHead">まだデモを見ていない場合</h2>
+      <p>シナリオA から D まで、順に進めてから回答してください（全部でおよそ15分）。各シナリオのまとめにある「次へ」で、続けて進めます。</p>
+    </div>
+    <div class="demo-link">
+      <a class="btn" id="demoLink" href="../#scenario-a" target="_blank" rel="noopener">デモを開く（シナリオAから）</a>
+    </div>
+  </section>
+
+  <p class="status" id="saveStatus" role="status">回答は、このブラウザに保存されます。自分の端末で答えている場合は、送信後に出る回答の文章を、デモを案内した人に送ってください。</p>
+
+  <form id="survey" novalidate>
+    <div class="q-list">
+
+      <section class="card" aria-labelledby="s1">
+        <div class="sec-head"><span class="kicker">1 ／ 5</span><h2 id="s1">あなたについて</h2></div>
+        <fieldset>
+          <legend><span class="q">Q1</span>立場</legend>
+          <div class="choices" id="q_role"></div>
+        </fieldset>
+        <fieldset>
+          <legend><span class="q">Q2</span>デモを見る前、ブロックチェーンについてどのくらい知っていましたか</legend>
+          <div class="choices" id="q_prior"></div>
+        </fieldset>
+        <fieldset>
+          <legend><span class="q">Q3</span>体験したシナリオ <span class="note">（当てはまるものすべて）</span></legend>
+          <div class="choices" id="q_done"></div>
+        </fieldset>
+      </section>
+
+      <section class="card" aria-labelledby="s2">
+        <div class="sec-head">
+          <span class="kicker">2 ／ 5</span><h2 id="s2">内容の確認</h2>
+          <p>デモで見た内容から答えてください。分からないときは「分からない」を選んでください。</p>
+        </div>
+        <div id="quizArea" class="q-list"></div>
+      </section>
+
+      <section class="card" aria-labelledby="s3">
+        <div class="sec-head">
+          <span class="kicker">3 ／ 5</span><h2 id="s3">分かったこと</h2>
+          <p>それぞれ、どのくらい当てはまるかを選んでください。</p>
+        </div>
+        <div id="likertArea" class="q-list"></div>
+      </section>
+
+      <section class="card" aria-labelledby="s4">
+        <div class="sec-head"><span class="kicker">4 ／ 5</span><h2 id="s4">見せ方について</h2></div>
+        <div id="likertArea2" class="q-list"></div>
+      </section>
+
+      <section class="card" aria-labelledby="s5">
+        <div class="sec-head"><span class="kicker">5 ／ 5</span><h2 id="s5">自由記述</h2><p>思ったことを、短くてもよいので書いてください。</p></div>
+        <fieldset>
+          <legend><span class="q">Q17</span>デモを見て、一番よく分かったこと</legend>
+          <textarea id="f_learned" name="f_learned"></textarea>
+        </fieldset>
+        <fieldset>
+          <legend><span class="q">Q18</span>分かりにくかった場面と、その理由 <span class="note">（シナリオ名や画面の場所もあれば）</span></legend>
+          <textarea id="f_confusing" name="f_confusing"></textarea>
+        </fieldset>
+        <fieldset>
+          <legend><span class="q">Q19</span>そのほか、気付いたこと・改善してほしいこと</legend>
+          <textarea id="f_other" name="f_other"></textarea>
+        </fieldset>
+        <div class="actions">
+          <button type="submit" class="btn" id="submitBtn">回答を送る</button>
+          <span class="msg" id="formMsg" role="alert"></span>
+        </div>
+      </section>
+    </div>
+  </form>
+
+  <section class="card done" id="doneCard" hidden aria-labelledby="doneHead">
+    <h2 id="doneHead">ご協力ありがとうございました</h2>
+    <p id="doneText"></p>
+    <div id="copyArea" hidden class="done">
+      <textarea class="copybox" id="copyText" readonly></textarea>
+      <div class="actions">
+        <button type="button" class="btn" id="copyBtn">回答をコピー</button>
+        <button type="button" class="btn ghost" id="saveTxtBtn">ファイルに保存</button>
+        <span class="msg ok" id="copyMsg"></span>
+      </div>
+    </div>
+    <div class="actions"><button type="button" class="btn ghost" id="againBtn">別の人が回答する</button></div>
+  </section>
+
+  <section class="card results" id="resultsCard" hidden aria-labelledby="resHead">
+    <div class="sec-head">
+      <span class="kicker">実施者用</span>
+      <h2 id="resHead">集計（このブラウザに保存された回答）</h2>
+      <p>この端末で答えてもらった回答と、下で追加した回答を集計します。回答はこのブラウザの中にだけあるので、こまめに CSV を保存してください。</p>
+    </div>
+    <div id="resultsBody"><p class="note">回答はまだありません。この端末で回答してもらうか、受け取った回答を下に貼り付けて追加すると、件数・正答率・平均が出ます。</p></div>
+    <div class="actions">
+      <button type="button" class="btn" id="csvSaveBtn" disabled>CSV を保存</button>
+      <button type="button" class="btn ghost" id="csvBtn" disabled>CSV をコピー</button>
+      <span class="msg ok" id="csvMsg"></span>
+    </div>
+    <fieldset>
+      <legend>受け取った回答を追加する <span class="note">（回答者から送られてきた文章を、そのまま貼り付け）</span></legend>
+      <textarea id="importText" name="importText"></textarea>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="importBtn">追加する</button>
+        <span class="msg" id="importMsg"></span>
+      </div>
+    </fieldset>
+  </section>
+
+  <p class="note foot"><a href="#results" id="resultsLink">実施者用：このブラウザの回答を集計する</a></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- 設問 ----------
+  var ROLE = ['学部生（情報系）', '学部生（情報系以外）', '大学院生', '教員', 'その他'];
+  var PRIOR = ['聞いたことがない', '名前は聞いたことがある', '仕組みを少し知っている', '人に説明できる'];
+  var SCENARIOS = ['A 正規の更新', 'B データの書換え', 'C 1台の故障', 'D 2台の故障'];
+
+  // 内容の確認（正解のある設問）。answer は正解の選択肢の番号
+  var QUIZ = [
+    { id: 'k1', no: 'Q4', text: 'シナリオA（正規の更新）で、ブロックチェーン方式では申請を受け付けたあと何が起きましたか',
+      options: ['受け付けたノードがブロックを台帳の最後に追記し、それがほかのノードへ伝わった', '前のブロックが消され、新しい値に置き換わった', 'VM1 のデータだけが書き換わった', '分からない'], answer: 0 },
+    { id: 'k2', no: 'Q5', text: 'シナリオB（データの書換え）で、書き換えられた値がそのままほかのマシンへ複製されたのはどの方式ですか',
+      options: ['単一DB', 'DB＋ハッシュ', 'ブロックチェーン', '分からない'], answer: 0 },
+    { id: 'k3', no: 'Q6', text: 'シナリオBで、DB＋ハッシュ方式が書換えに気付けたのはなぜですか',
+      options: ['保存してあったハッシュと照合したら合わなかったから', 'ほかの組織の台帳と見比べたから', '管理者が画面を見て気付いたから', '分からない'], answer: 0 },
+    { id: 'k4', no: 'Q7', text: 'シナリオBで、マルウェアの書換えのあと、ブロックチェーン方式の台帳（ブロック）はどうなっていましたか',
+      options: ['新しいブロックは追加されず、正規の更新のときの値のまま残っていた', '書き換えた値のブロックが追加されていた', 'ブロックがすべて消えていた', '分からない'], answer: 0 },
+    { id: 'k5', no: 'Q8', text: 'シナリオC（1台の故障）で、VM1 が止まっている間に申請を受け付けられたのはどれですか',
+      options: ['ブロックチェーンだけ', '3つの方式すべて', '単一DB と DB＋ハッシュだけ', '分からない'], answer: 0 },
+    { id: 'k6', no: 'Q9', text: 'シナリオD（2台の故障）で、ブロックチェーン方式でも書き込めなかったのはなぜですか',
+      options: ['動いているノードが1台だけで、過半数の合意が取れないから', 'ハッシュが合わなかったから', 'マルウェアに書き換えられたから', '分からない'], answer: 0 },
+  ];
+
+  var LIKERT_LABELS = ['そう思わない', 'あまりそう思わない', 'どちらともいえない', 'ややそう思う', 'そう思う'];
+  var LIKERT = [
+    { id: 'u1', no: 'Q10', text: '正規の更新で、数値と一緒に付随する情報（複製・ハッシュ・ブロック）がどう更新されるかが分かった' },
+    { id: 'u2', no: 'Q11', text: 'データを直接書き換えられたとき、3つの方式で結果が分かれる理由が分かった' },
+    { id: 'u3', no: 'Q12', text: '1台が止まっても、ブロックチェーンは申請を受け付け続けられる理由が分かった' },
+    { id: 'u4', no: 'Q13', text: 'ブロックチェーンにも限界がある（2台止まると書き込めない）ことが分かった' },
+    { id: 'u5', no: 'Q14', text: 'ブロックチェーン方式で「台帳（ブロック）」と「記録（データベース）」が別々にある理由が分かった' },
+  ];
+  var LIKERT2 = [
+    { id: 'v1', no: 'Q15', text: '変化した所を吹き出しで1か所ずつ確かめてから進む形は、分かりやすかった' },
+    { id: 'v2', no: 'Q16', text: '画面の文字や図の大きさは、見やすかった' },
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  // 選択肢の並びは、正解がいつも先頭にならないよう固定の順で入れ替える（回答者ごとには変えない）
+  var QUIZ_ORDER = { k1: [1, 0, 2, 3], k2: [1, 2, 0, 3], k3: [2, 0, 1, 3], k4: [1, 2, 0, 3], k5: [2, 1, 0, 3], k6: [1, 0, 2, 3] };
+
+  function choiceList(container, name, options, type, order) {
+    (order || options.map(function (_, i) { return i; })).forEach(function (i) {
+      var id = name + '_' + i;
+      var lab = el('label', { class: 'choice', for: id });
+      var inp = el('input', { type: type, name: name, id: id, value: String(i) });
+      lab.appendChild(inp);
+      lab.appendChild(el('span', null, options[i]));
+      container.appendChild(lab);
+    });
+  }
+  function likertBlock(container, q) {
+    var fs = el('fieldset');
+    var lg = el('legend');
+    lg.appendChild(el('span', { class: 'q' }, q.no));
+    lg.appendChild(document.createTextNode(q.text));
+    fs.appendChild(lg);
+    var row = el('div', { class: 'likert' });
+    LIKERT_LABELS.forEach(function (label, i) {
+      var id = q.id + '_' + (i + 1);
+      var lab = el('label', { for: id });
+      lab.appendChild(el('input', { type: 'radio', name: q.id, id: id, value: String(i + 1) }));
+      lab.appendChild(el('b', null, String(i + 1)));
+      lab.appendChild(el('span', null, label));
+      row.appendChild(lab);
+    });
+    fs.appendChild(row);
+    container.appendChild(fs);
+  }
+
+  choiceList($('q_role'), 'role', ROLE, 'radio');
+  choiceList($('q_prior'), 'prior', PRIOR, 'radio');
+  choiceList($('q_done'), 'done', SCENARIOS, 'checkbox');
+  QUIZ.forEach(function (q) {
+    var fs = el('fieldset');
+    var lg = el('legend');
+    lg.appendChild(el('span', { class: 'q' }, q.no));
+    lg.appendChild(document.createTextNode(q.text));
+    fs.appendChild(lg);
+    var box = el('div', { class: 'choices' });
+    choiceList(box, q.id, q.options, 'radio', QUIZ_ORDER[q.id]);
+    fs.appendChild(box);
+    $('quizArea').appendChild(fs);
+  });
+  LIKERT.forEach(function (q) { likertBlock($('likertArea'), q); });
+  LIKERT2.forEach(function (q) { likertBlock($('likertArea2'), q); });
+
+  // ---------- 回答の取り出し ----------
+  function radio(name) {
+    var c = document.querySelector('input[name="' + name + '"]:checked');
+    return c ? Number(c.value) : null;
+  }
+  function collect() {
+    var a = {
+      role: radio('role'),
+      prior: radio('prior'),
+      done: Array.prototype.map.call(document.querySelectorAll('input[name="done"]:checked'), function (c) { return Number(c.value); }),
+      f_learned: $('f_learned').value.trim(),
+      f_confusing: $('f_confusing').value.trim(),
+      f_other: $('f_other').value.trim(),
+    };
+    QUIZ.forEach(function (q) { a[q.id] = radio(q.id); });
+    LIKERT.concat(LIKERT2).forEach(function (q) { a[q.id] = radio(q.id); });
+    return a;
+  }
+  function missing(a) {
+    var need = [['role', 'Q1'], ['prior', 'Q2']];
+    QUIZ.forEach(function (q) { need.push([q.id, q.no]); });
+    LIKERT.concat(LIKERT2).forEach(function (q) { need.push([q.id, q.no]); });
+    var out = need.filter(function (n) { return a[n[0]] == null; }).map(function (n) { return n[1]; });
+    if (!a.done.length) out.splice(2, 0, 'Q3');
+    return out;
+  }
+  function asText(a) {
+    var lines = ['【デモ体験アンケート 回答】', '回答日時: ' + new Date().toLocaleString('ja-JP')];
+    lines.push('Q1 立場: ' + (ROLE[a.role] || '—'));
+    lines.push('Q2 事前知識: ' + (PRIOR[a.prior] || '—'));
+    lines.push('Q3 体験したシナリオ: ' + (a.done.map(function (i) { return SCENARIOS[i]; }).join('、') || '—'));
+    QUIZ.forEach(function (q) { lines.push(q.no + ': ' + (a[q.id] != null ? q.options[a[q.id]] : '—')); });
+    LIKERT.concat(LIKERT2).forEach(function (q) { lines.push(q.no + ': ' + (a[q.id] || '—') + ' / 5'); });
+    lines.push('Q17 一番よく分かったこと: ' + (a.f_learned || '—'));
+    lines.push('Q18 分かりにくかった場面: ' + (a.f_confusing || '—'));
+    lines.push('Q19 そのほか: ' + (a.f_other || '—'));
+    return lines.join('\n');
+  }
+
+  // ---------- 保存先（このブラウザ） ----------
+  // GitHub Pages には保存先がないので、回答はこのブラウザの localStorage に貯める。
+  // 回答者の端末で答えた場合は、文章（最後の行に機械で読める形の回答を付ける）を送ってもらう。
+  var STORE_KEY = 'blockchain-demo-survey-v1';
+  var DATA_MARK = '#DATA ';
+  function loadRows() {
+    try {
+      var v = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(function (r) { return r && r.answers; }) : [];
+    } catch (_) { return []; }
+  }
+  function saveRows(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); return true; } catch (_) { return false; }
+  }
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  // ---------- 送信 ----------
+  $('survey').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var a = collect();
+    var miss = missing(a);
+    if (miss.length) {
+      $('formMsg').textContent = 'まだ答えていない設問があります：' + miss.join('、');
+      return;
+    }
+    $('formMsg').textContent = '';
+    var record = { v: 1, id: newId(), submittedAt: new Date().toISOString(), answers: a };
+    var list = loadRows();
+    list.push(record);
+    var saved = saveRows(list);
+    rows = list;
+    if (!$('resultsCard').hidden) renderResults();
+    showDone(saved, asText(a) + '\n' + DATA_MARK + JSON.stringify(record));
+  });
+
+  function showDone(saved, text) {
+    $('survey').hidden = true;
+    $('saveStatus').hidden = true;
+    $('doneCard').hidden = false;
+    $('doneText').textContent = (saved ? 'このブラウザに回答を保存しました。' : 'このブラウザには保存できませんでした。')
+      + 'デモを案内した人の端末で答えている場合は、これで終わりです。自分の端末で答えている場合は、下の回答をコピーするかファイルに保存して、デモを案内した人に送ってください（メールやチャットに貼り付けるだけで大丈夫です）。';
+    $('copyArea').hidden = false;
+    $('copyText').value = text;
+    $('doneCard').scrollIntoView({ block: 'start' });
+  }
+
+  function copy(text, msgEl, box) {
+    var done = function () { msgEl.textContent = 'コピーしました'; };
+    var fail = function () {
+      if (box) { box.focus(); box.select(); }
+      msgEl.textContent = '自動でコピーできませんでした。選択した文章をコピーしてください。';
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, fail);
+    } catch (_) { fail(); }
+  }
+  $('copyBtn').addEventListener('click', function () { copy($('copyText').value, $('copyMsg'), $('copyText')); });
+
+  function saveFile(name, text, type) {
+    var blob = new Blob(['\ufeff' + text], { type: type });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function stamp() { return new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ''); }
+  $('saveTxtBtn').addEventListener('click', function () {
+    saveFile('アンケート回答_' + stamp() + '.txt', $('copyText').value, 'text/plain');
+    $('copyMsg').textContent = 'ファイルに保存しました';
+  });
+
+  $('againBtn').addEventListener('click', function () {
+    $('survey').reset();
+    $('survey').hidden = false;
+    $('saveStatus').hidden = false;
+    $('doneCard').hidden = true;
+    $('copyMsg').textContent = '';
+    window.scrollTo(0, 0);
+  });
+
+  // ---------- 集計（実施者用） ----------
+  var rows = loadRows();
+  function showResults() {
+    var on = location.hash === '#results';
+    $('resultsCard').hidden = !on;
+    if (on) { rows = loadRows(); renderResults(); $('resultsCard').scrollIntoView({ block: 'start' }); }
+  }
+  window.addEventListener('hashchange', showResults);
+
+  // 回答者から送られてきた文章の「#DATA」行を読み取って追加する（同じ回答は二重に入れない）
+  $('importBtn').addEventListener('click', function () {
+    var text = $('importText').value;
+    var list = loadRows();
+    var seen = {};
+    list.forEach(function (r) { if (r.id) seen[r.id] = true; });
+    var added = 0, bad = 0, dup = 0;
+    text.split(/\r?\n/).forEach(function (line) {
+      var i = line.indexOf(DATA_MARK);
+      if (i < 0) return;
+      try {
+        var r = JSON.parse(line.slice(i + DATA_MARK.length));
+        if (!r || !r.answers) { bad += 1; return; }
+        if (r.id && seen[r.id]) { dup += 1; return; }
+        if (r.id) seen[r.id] = true;
+        list.push(r);
+        added += 1;
+      } catch (_) { bad += 1; }
+    });
+    var msg = $('importMsg');
+    if (!added && !bad && !dup) { msg.className = 'msg'; msg.textContent = '回答のデータが見つかりません。送られてきた文章を、最後の「#DATA」の行まで含めて貼り付けてください。'; return; }
+    saveRows(list);
+    rows = list;
+    renderResults();
+    msg.className = added ? 'msg ok' : 'msg';
+    msg.textContent = added + '件追加しました' + (dup ? '（追加済みの ' + dup + '件は飛ばしました）' : '') + (bad ? '（読み取れなかった行 ' + bad + '件）' : '');
+    if (added) $('importText').value = '';
+  });
+
+  function renderResults() {
+    var body = $('resultsBody');
+    body.innerHTML = '';
+    $('csvBtn').disabled = !rows.length;
+    $('csvSaveBtn').disabled = !rows.length;
+    if (!rows.length) {
+      body.appendChild(el('p', { class: 'note' }, '回答はまだありません。この端末で回答してもらうか、受け取った回答を下に貼り付けて追加すると、件数・正答率・平均が出ます。'));
+      return;
+    }
+    var n = rows.length;
+    var quizTotal = 0;
+    rows.forEach(function (r) { QUIZ.forEach(function (q) { if (r.answers[q.id] === q.answer) quizTotal += 1; }); });
+
+    var stats = el('div', { class: 'stat-row' });
+    [[String(n) + '件', '回答数'], [Math.round(quizTotal / (n * QUIZ.length) * 100) + '%', '内容の確認の正答率（平均）']].forEach(function (s) {
+      var d = el('div', { class: 'stat' });
+      d.appendChild(el('b', null, s[0]));
+      d.appendChild(el('span', null, s[1]));
+      stats.appendChild(d);
+    });
+    body.appendChild(stats);
+
+    // 正答率
+    body.appendChild(el('h2', null, '内容の確認（正答率）'));
+    var t1wrap = el('div', { class: 'table-wrap' });
+    var t1 = el('table');
+    QUIZ.forEach(function (q) {
+      var ok = rows.filter(function (r) { return r.answers[q.id] === q.answer; }).length;
+      var unk = rows.filter(function (r) { return r.answers[q.id] === 3; }).length;
+      var tr = el('tr');
+      tr.appendChild(el('td', null, q.no + ' ' + q.text));
+      tr.appendChild(barCell(ok / n));
+      tr.appendChild(el('td', { class: 'num' }, ok + '/' + n + '（分からない ' + unk + '）'));
+      t1.appendChild(tr);
+    });
+    t1wrap.appendChild(t1);
+    body.appendChild(t1wrap);
+
+    // 5段階の平均
+    body.appendChild(el('h2', null, '分かったこと・見せ方（5段階の平均）'));
+    var t2wrap = el('div', { class: 'table-wrap' });
+    var t2 = el('table');
+    LIKERT.concat(LIKERT2).forEach(function (q) {
+      var vals = rows.map(function (r) { return r.answers[q.id]; }).filter(function (v) { return typeof v === 'number'; });
+      var avg = vals.length ? vals.reduce(function (s, v) { return s + v; }, 0) / vals.length : 0;
+      var tr = el('tr');
+      tr.appendChild(el('td', null, q.no + ' ' + q.text));
+      tr.appendChild(barCell((avg - 1) / 4));
+      tr.appendChild(el('td', { class: 'num' }, avg.toFixed(2)));
+      t2.appendChild(tr);
+    });
+    t2wrap.appendChild(t2);
+    body.appendChild(t2wrap);
+
+    // 自由記述
+    [['f_learned', 'Q17 一番よく分かったこと'], ['f_confusing', 'Q18 分かりにくかった場面'], ['f_other', 'Q19 そのほか']].forEach(function (f) {
+      var items = rows.map(function (r) { return r.answers[f[0]]; }).filter(Boolean);
+      if (!items.length) return;
+      body.appendChild(el('h2', null, f[1]));
+      var box = el('div', { class: 'free' });
+      items.forEach(function (t) { box.appendChild(el('blockquote', null, String(t))); });
+      body.appendChild(box);
+    });
+  }
+  function barCell(ratio) {
+    var td = el('td');
+    var bar = el('div', { class: 'bar' });
+    var fill = el('i');
+    fill.style.width = Math.max(0, Math.min(1, ratio)) * 100 + '%';
+    bar.appendChild(fill);
+    td.appendChild(bar);
+    return td;
+  }
+
+  function csv() {
+    var head = ['回答日時', 'Q1 立場', 'Q2 事前知識', 'Q3 体験したシナリオ'];
+    QUIZ.forEach(function (q) { head.push(q.no + ' 回答', q.no + ' 正誤'); });
+    LIKERT.concat(LIKERT2).forEach(function (q) { head.push(q.no); });
+    head.push('Q17', 'Q18', 'Q19');
+    var lines = [head];
+    rows.forEach(function (r) {
+      var a = r.answers;
+      var line = [r.submittedAt, ROLE[a.role] || '', PRIOR[a.prior] || '', (a.done || []).map(function (i) { return SCENARIOS[i]; }).join(' / ')];
+      QUIZ.forEach(function (q) { line.push(a[q.id] != null ? q.options[a[q.id]] : '', a[q.id] === q.answer ? '正' : '誤'); });
+      LIKERT.concat(LIKERT2).forEach(function (q) { line.push(a[q.id] != null ? a[q.id] : ''); });
+      line.push(a.f_learned || '', a.f_confusing || '', a.f_other || '');
+      lines.push(line);
+    });
+    return lines.map(function (l) {
+      return l.map(function (v) { var s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',');
+    }).join('\n');
+  }
+  $('csvBtn').addEventListener('click', function () { copy(csv(), $('csvMsg'), null); });
+  $('csvSaveBtn').addEventListener('click', function () {
+    saveFile('アンケート集計_' + stamp() + '.csv', csv(), 'text/csv');
+    $('csvMsg').textContent = 'CSV を保存しました';
+  });
+
+  showResults();
+})();
+</script>
+</body>
+</html>
