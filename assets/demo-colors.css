@@ -1,0 +1,56 @@
+/* ==========================================================================
+   demo-colors.css — 色の使い方をそろえる（ほかのCSSより後に読み込む）
+   ・赤：書き換えられた値だけ。文字を赤、背景はごく薄い赤。枠線は付けない
+   ・照合の結果：つなぎの印（✓ / ✗）で示す。値のセル自体は塗らない
+   ・それ以外：白とグレー（選択中・不一致の行を黄色やオレンジで塗らない）
+   ========================================================================== */
+
+/* 行の塗り（選択中・不一致）をやめる */
+body.mockup-app .db-record-table tr.is-selected td,
+body.mockup-app .db-record-table tr.is-detected td,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .db-record-table tr.is-selected td,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .db-record-table tr.is-detected td {
+  background: transparent !important;
+  color: inherit;
+}
+/* 帳票A・Bをつなぐ線はセルの下を通るので、つないだ表のセルは白で塗っておく（透けると「備品ID」に線が重なる） */
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .db-record-table tr.is-selected td,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .db-record-table tr.is-detected td { background: #fff !important; }
+
+/* 書き換えられた値：赤い文字と薄い赤の背景だけ */
+body.mockup-app .cell-qty.is-cell-attack,
+body.mockup-app .cell-stored-hash.is-cell-attack,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .cell-stored-hash.is-cell-attack {
+  color: #c62828 !important;
+  background: #fdeeee !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+body.mockup-app .cell-qty .qty-from-label { color: #8a93a6; font-weight: 400; }
+
+/* 照合の結果でセルを塗らない（判定は ✓ / ✗ の印で見る） */
+body.mockup-app .cell-current-hash.is-cell-detected,
+body.mockup-app .cell-stored-hash.is-cell-detected:not(.is-cell-attack),
+body.mockup-app .cell-current-hash.is-cell-match,
+body.mockup-app .cell-stored-hash.is-cell-match,
+body.mockup-app .cell-ledger-af.is-cell-detected,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .cell-current-hash.is-cell-detected,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .cell-stored-hash.is-cell-detected:not(.is-cell-attack),
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .cell-current-hash.is-cell-match,
+body.mockup-app .ledger-books-shell.ledger-books-row-linked .cell-stored-hash.is-cell-match {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+/* Fabric のブロック・状態DB：不一致の塗りはやめ、枠の色だけで示す */
+body.mockup-app .block.is-detected { background: #fff !important; }
+body.mockup-app .kv-row.is-detected { background: transparent !important; }
+
+/* 説明付きのラベル・省略したハッシュの下に出ていた点線はやめる（マウスを乗せたときの説明はそのまま） */
+body.mockup-app .tx .k[title],
+body.mockup-app .hash-line .label[title],
+body.mockup-app .kv-val span[title],
+body.mockup-app .master-field .k[title],
+body.mockup-app .tx-id[title] { border-bottom: none !important; }
+body.mockup-app .hash-abbr { text-decoration: none !important; }

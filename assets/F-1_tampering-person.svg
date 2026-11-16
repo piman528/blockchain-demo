@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 裏で書き換える人（図形のみ）。見出しキャプションはPowerPoint側。台帳の数値は図の主旨なので残す -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" font-family="'Hiragino Sans', 'Noto Sans JP', sans-serif">
+  <defs>
+    <style>
+      .skin    { fill: #fcd9b8; stroke: #0f172a; stroke-width: 3; }
+      .body    { fill: #475569; stroke: #0f172a; stroke-width: 3; }
+      .ledger  { fill: #ffffff; stroke: #0f172a; stroke-width: 3; }
+      .line    { stroke: #cbd5e1; stroke-width: 4; }
+      .oldv    { font-size: 26px; font-weight: 700; fill: #94a3b8; text-anchor: middle; font-family: monospace; }
+      .newv    { font-size: 30px; font-weight: 800; fill: #dc2626; text-anchor: middle; font-family: monospace; }
+      .pencil  { fill: #ca8a04; stroke: #0f172a; stroke-width: 2.5; }
+      .sweat   { fill: #38bdf8; }
+    </style>
+  </defs>
+
+  <!-- Person -->
+  <g transform="translate(40, 30)">
+    <circle class="skin" cx="80" cy="80" r="54"/>
+    <ellipse fill="#0f172a" cx="64" cy="74" rx="8" ry="11"/>
+    <ellipse fill="#0f172a" cx="96" cy="74" rx="8" ry="11"/>
+    <path class="sweat" d="M 128 66 q 8 16 0 24 q -8 -8 0 -24 z"/>
+    <path class="body" d="M 26 146 q 54 -34 108 0 v 134 h -108 z"/>
+    <path class="skin" d="M 128 174 q 80 0 128 48 l -14 18 q -47 -38 -114 -38 z"/>
+  </g>
+
+  <!-- Ledger -->
+  <g transform="translate(250, 150)">
+    <rect class="ledger" x="0" y="0" width="210" height="170" rx="8"/>
+    <line class="line" x1="22" y1="44" x2="188" y2="44"/>
+    <line class="line" x1="22" y1="84" x2="188" y2="84"/>
+    <line class="line" x1="22" y1="124" x2="188" y2="124"/>
+    <text class="oldv" x="105" y="52">5</text>
+    <text class="newv" x="105" y="112">100</text>
+    <g transform="translate(165, 88) rotate(40)">
+      <rect class="pencil" x="0" y="0" width="16" height="80" rx="2"/>
+      <path class="pencil" d="M 0 80 L 8 98 L 16 80 z"/>
+    </g>
+  </g>
+</svg>

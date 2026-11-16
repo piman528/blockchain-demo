@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ブロックチェーン可視化ラボ</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/demo-mockup.css">
+  <link rel="stylesheet" href="assets/tutorial-overlay/tutorial-overlay.css">
+  <link rel="stylesheet" href="assets/demo-mockup-v2.css">
+  <link rel="stylesheet" href="assets/compare.css">
+  <link rel="stylesheet" href="assets/demo-scenario.css">
+  <link rel="stylesheet" href="assets/demo-colors.css">
+  <link rel="stylesheet" href="assets/demo-mapedit.css">
+  <style>
+    .mockup-app .workspace-toolbar{position:relative!important;z-index:900!important}
+    /* 灰色の補足説明は出さない（ノード状態が取れないときの注意だけは残す） */
+    .mockup-app p.ctrl-hint, .mockup-app .status-explanation{display:none!important}
+    .mockup-app #nodeOpsStatus p.ctrl-hint{display:block!important}
+    /* 方式の見出しは名前と判定だけにする（C-01 などの番号・照合の基準は出さない） */
+    .mockup-app .method-region-code, .mockup-app .method-region-basis{display:none!important}
+    .scenario-launch{position:relative;margin-left:12px;z-index:1000}
+    #btnScenarioMenu{border:1px solid #2f6fde;background:#2f6fde;color:#fff;border-radius:8px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer}
+    .scenario-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:1000;width:280px;background:#fff;border:1px solid #d9dde5;border-radius:10px;box-shadow:0 10px 30px rgba(20,30,60,.15);padding:10px}
+    .scenario-menu-note{margin:0 0 8px;font-size:12px;color:#5b6476}
+    .scenario-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:14px;color:#1d2433;text-decoration:none}
+    .scenario-item b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#e7efff;color:#2f6fde;font-size:12px}
+    .scenario-item span{margin-left:auto;font-size:12px;color:#2f6fde}
+    .scenario-item:not(.is-disabled):hover{background:#f2f5fb}
+    .scenario-item.is-disabled{color:#a3aab8;cursor:default}
+    .scenario-item.is-disabled b{background:#f1f3f6;color:#a3aab8}
+    .scenario-item.is-disabled span{color:#a3aab8}
+  </style>
+<script>
+(function () {
+  var m = location.hash.match(/^#scenario-([a-d])$/);
+  window.__STATIC_DEMO__ = true;
+  window.__staticSearch = m ? '?scenario=' + m[1] + '&tutorial=0' : '';
+  window.__goDemo = function (s) {
+    var h = s ? '#scenario-' + s : '#top';
+    if (location.hash === h) location.reload(); else location.hash = h;
+  };
+  window.addEventListener('hashchange', function () { location.reload(); });
+  var origFetch = window.fetch.bind(window);
+  function json(body, status) {
+    return Promise.resolve(new Response(JSON.stringify(body), { status: status, headers: { 'content-type': 'application/json' } }));
+  }
+  window.fetch = function (url, opts) {
+    var u = typeof url === 'string' ? url : (url && url.url) || '';
+    if (u.indexOf('/admin/api/') === 0) {
+      if (u === '/admin/api/demo/mode') return json({ mode: 'mock' }, 200);
+      return json({ error: '静的版のため、実機の API はありません' }, 503);
+    }
+    return origFetch(url, opts);
+  };
+})();
+</script>
+<style>
+  /* 静的版ではファイルの保存ができないので、ダウンロードのボタンは出さない */
+  [data-download]{display:none!important}
+</style>
+</head>
+<body class="mockup-app compare-app" data-scenario="c03">
+<!-- ===== 左ドック（マスタ / ブロック凡例） ===== -->
+  <aside class="mockup-dock" aria-label="データと方式の解説">
+    <div class="rail-heading"><span>参照データ</span><span class="rail-caption">DATA &amp; GUIDE</span></div>
+    <details class="block-param-legend" id="blockParamLegend" aria-label="ブロック内の項目の意味">
+      <summary>ブロックの見方</summary>
+      <dl class="param-legend-list">
+        <div class="param-legend-row">
+          <dt>前のハッシュ</dt>
+          <dd>ひとつ前のブロックのハッシュ（つながりの確認用）</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>ハッシュ</dt>
+          <dd>このブロック全体から計算した値</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>検算結果</dt>
+          <dd>いまの内容からもう一度計算した値</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>監査用の値</dt>
+          <dd>備品データの正しさを残すための値</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>個数</dt>
+          <dd>備品の個数</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>版数</dt>
+          <dd>マスタが何回更新されたか</dd>
+        </div>
+        <div class="param-legend-row">
+          <dt>取引番号</dt>
+          <dd>この操作を識別する番号</dd>
+        </div>
+      </dl>
+    </details>
+
+    <div class="master-float">
+      <h3 id="masterFloatTitle">備品マスタ（VM1: data/items.json）</h3>
+      <div id="masterList"></div>
+    </div>
+
+    <!-- 改ざんアラート表示エリア -->
+    <div class="tampering-alert" id="tamperingAlert" hidden>
+      <div class="alert-content">
+        <div class="alert-svg-container" id="alertSvgContainer"></div>
+        <div class="alert-message" id="alertMessage">改ざんが発生しました</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== メイン（C-03 マップ / C-01・C-02 比較） ===== -->
+  <main class="mockup-main">
+    <div class="workspace-toolbar">
+      <div class="workspace-title"><span class="workspace-dot" aria-hidden="true"></span><h1 id="scenarioTitle">ブロックチェーンの台帳マップ</h1>
+        <div class="scenario-launch">
+          <button type="button" id="btnScenarioMenu" aria-haspopup="true" aria-expanded="false">シナリオで学ぶ ▾</button>
+          <div class="scenario-menu" id="scenarioMenu" hidden>
+            <p class="scenario-menu-note">台帳マップの上で、A の正規の更新から順に、1つずつ状況を体験します。</p>
+            <a class="scenario-item" href="#scenario-a"><b>A</b> 正規の更新<span>開く →</span></a>
+            <a class="scenario-item" href="#scenario-b"><b>B</b> データの書換え<span>開く →</span></a>
+            <a class="scenario-item" href="#scenario-c"><b>C</b> 1台の故障<span>開く →</span></a>
+            <a class="scenario-item" href="#scenario-d"><b>D</b> 2台の故障<span>開く →</span></a>
+            <a class="scenario-item" href="https://claude.ai/artifact/CjwPtRJcEtRm9aYhuMP1Gu" target="_blank" rel="noopener"><b>?</b> 体験後のアンケート<span>開く →</span></a>
+          </div>
+        </div></div>
+      <div class="demo-story-guide" id="demoStoryGuide" aria-live="polite" hidden></div>
+      <div class="canvas-tools" data-c03-only aria-label="図の表示操作">
+        <button id="btnZoomOut" type="button" aria-label="図を縮小">−</button>
+        <output id="canvasZoom" aria-label="図の倍率">100%</output>
+        <button id="btnZoomIn" type="button" aria-label="図を拡大">＋</button>
+        <button id="btnFitMap" type="button">全体表示</button>
+      </div>
+    </div>
+    <div class="map-stage" id="mapStage" data-tutorial-target="map-stage">
+      <div class="map-grid"></div>
+      <div class="map-change-spotlight" id="changeSpotlight" role="status" aria-live="polite" hidden>
+        <span class="change-spotlight-mark" aria-hidden="true"></span>
+        <span id="changeSpotlightText"></span>
+      </div>
+      <div class="map-world" id="mapWorld" data-scenario="c03">
+        <svg class="map-svg" id="mapSvg" width="6000" height="1600">
+          <defs>
+            <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <path d="M0,0 L0,8 L8,4 Z" fill="#94a3b8" />
+            </marker>
+            <marker id="arrowHeadBad" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <path d="M0,0 L0,8 L8,4 Z" fill="#ef4444" />
+            </marker>
+          </defs>
+          <g id="svgArrows"></g>
+        </svg>
+
+        <div class="peer-lane fabric-map" id="peerLane0" style="top: 30px;">
+          <div class="peer-label" id="peerLabel0">
+            <div class="name">VM1</div>
+            <div class="role">代表ノード</div>
+            <div class="status" id="peerStatus0">同期OK</div>
+          </div>
+          <div class="peer-rail" id="peerRail0"></div>
+        </div>
+        <div class="peer-divider fabric-map" style="top: 380px;"></div>
+
+        <div class="peer-lane fabric-map" id="peerLane1" style="top: 400px;">
+          <div class="peer-label" id="peerLabel1">
+            <div class="name">VM2</div>
+            <div class="role">ノード</div>
+            <div class="status" id="peerStatus1">同期OK</div>
+          </div>
+          <div class="peer-rail" id="peerRail1"></div>
+        </div>
+        <div class="peer-divider fabric-map" style="top: 750px;"></div>
+
+        <div class="peer-lane fabric-map" id="peerLane2" style="top: 770px;">
+          <div class="peer-label" id="peerLabel2">
+            <div class="name">VM3</div>
+            <div class="role">ノード</div>
+            <div class="status" id="peerStatus2">同期OK</div>
+          </div>
+          <div class="peer-rail" id="peerRail2"></div>
+        </div>
+        <div class="peer-divider fabric-map" style="top: 1120px;"></div>
+
+        <!-- 3方式比較タブのときだけ表示：同じマップの上に C-01 / C-02 を並べる -->
+        <header class="method-region-head method-region-head-fabric" id="regionHeadC03"></header>
+        <div class="all-methods-row" id="allMethodsRow">
+          <section class="method-region" data-method="c01" aria-label="C-01 単一DB">
+            <header class="method-region-head" id="regionHeadC01"></header>
+            <div class="method-region-body" id="regionBodyC01"></div>
+          </section>
+          <section class="method-region" data-method="c02" aria-label="C-02 DB＋ハッシュ">
+            <header class="method-region-head" id="regionHeadC02"></header>
+            <div class="method-region-body" id="regionBodyC02"></div>
+          </section>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3方式比較（同じ書き換え・故障を3方式に同時にかける） -->
+    <div class="compare-stage" id="compareStage">
+      <div class="compare-stage-head">
+        <ol class="demo-story-steps compare-stages" id="cmpStages" aria-label="進み具合"></ol>
+        <div class="compare-legend" aria-label="色の意味">
+          <span class="legend-item"><span class="cmp-owner-chip is-own"></span>あなたの組織</span>
+          <span class="legend-item"><span class="cmp-owner-chip is-other"></span>他の組織</span>
+          <span class="legend-item cmp-mock-chip">模擬表示（Mock）</span>
+        </div>
+      </div>
+      <div class="compare-cols" id="cmpCols"></div>
+    </div>
+
+    <div class="comparison-stage" id="comparisonStage" data-tutorial-target="comparison-stage" hidden>
+      <div class="comparison-map-rail" id="comparisonRail"></div>
+    </div>
+  </main>
+
+  <!-- ===== 右コントロール ===== -->
+  <aside class="mockup-controls" aria-label="デモの操作">
+    <div class="rail-heading"><span>操作パネル</span><span class="rail-caption">CONTROLS</span></div>
+    <div class="control-panel">
+      <div id="compareControls">
+        <div class="cmp-seg" role="group" aria-label="書き換え">
+          <h3><span class="section-number">01</span> 書き換え</h3>
+          <div class="cmp-seg-opts" id="cmpAttack"></div>
+        </div>
+        <div class="cmp-seg" role="group" aria-label="故障">
+          <h3><span class="section-number">02</span> 故障</h3>
+          <div class="cmp-seg-opts" id="cmpFault"></div>
+        </div>
+        <button class="ctrl-btn cmp-replay" id="cmpReplay" type="button">もう一度見る</button>
+      </div>
+      <h3><span class="section-number">01</span> 備品を追加</h3>
+      <div class="registration-form" data-tutorial-target="new-item-form">
+        <div class="ctrl-field">
+          <label for="newItemId">備品ID</label>
+          <input id="newItemId" type="text" placeholder="PC-04" autocomplete="off">
+        </div>
+        <div class="ctrl-field">
+          <label for="newItemName">備品名</label>
+          <input id="newItemName" type="text" placeholder="ノートPC" autocomplete="off">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-field" style="flex:1;margin-bottom:0;">
+            <label for="newItemCategory">カテゴリ</label>
+            <input id="newItemCategory" type="text" placeholder="PC" value="PC">
+          </div>
+          <div class="ctrl-field" style="flex:1;margin-bottom:0;">
+            <label for="newItemQuantity">個数</label>
+            <input id="newItemQuantity" type="number" min="0" step="1" value="1">
+          </div>
+        </div>
+        <div class="ctrl-field">
+          <label for="newItemLocation">保管場所</label>
+          <input id="newItemLocation" type="text" placeholder="A棟" value="A棟">
+        </div>
+      </div>
+      <button class="ctrl-btn primary" id="btnRegisterItem" type="button" data-tutorial-target="register-button">
+        備品を登録
+      </button>
+
+      <div class="ctrl-divider"></div>
+      <div class="op-group op-group-legit">
+        <h3><span class="section-number">02</span> 正規操作</h3>
+        <p class="ctrl-hint">台帳または保存ハッシュにも残る操作。改ざんとの対比用。</p>
+        <div class="ctrl-row">
+          <select id="opTarget" aria-label="itemId">
+            <option value="">（備品を先に登録）</option>
+          </select>
+          <select id="opQuantity" aria-label="quantity">
+            <option value="1">qty=1</option>
+            <option value="3">qty=3</option>
+            <option value="5" selected>qty=5</option>
+            <option value="10">qty=10</option>
+            <option value="20">qty=20</option>
+          </select>
+        </div>
+        <button class="ctrl-btn primary" id="btnRegularUpdate">
+          正規更新
+        </button>
+        <button class="ctrl-btn" id="btnSoftDelete" type="button" title="DBからは行が消える。ブロックチェーンはブロックに削除の記録が追記され、履歴は残る">
+          削除
+        </button>
+        <p class="ctrl-hint" id="softDeleteHint">DB（C-01・C-02）からは行が消えます。ブロックチェーンは状態DBから消えますが、ブロックに削除の記録が追記され、それまでの履歴は残ります。</p>
+      </div>
+
+      <div id="c02ModeSelector" class="c02-mode-selector" hidden>
+        <div class="ctrl-divider"></div>
+        <h3>改ざんモード</h3>
+        <fieldset class="c02-mode-options">
+          <legend class="sr-only">C-02 改ざんモード</legend>
+          <label class="c02-mode-option">
+            <input type="radio" name="c02TamperMode" value="A" checked data-tutorial-target="c02-mode-a">
+            <span>A: エントリのみ改ざん</span>
+          </label>
+          <label class="c02-mode-option">
+            <input type="radio" name="c02TamperMode" value="B" data-tutorial-target="c02-mode-b">
+            <span>B: エントリ＋ハッシュ両方</span>
+          </label>
+        </fieldset>
+      </div>
+
+      <div class="op-group op-group-attack">
+        <h3><span class="section-number">03</span> 改ざんを試す</h3>
+        <p class="ctrl-hint">マスタだけを書き換える。正規更新・削除とは経路が違う。</p>
+        <button class="ctrl-btn danger" id="btnTamperMaster" data-tutorial-target="tamper-master-button">
+          マスタだけ改ざん
+        </button>
+        <div data-c03-only>
+          <button class="ctrl-btn danger" id="btnTamperPeer">
+            VM2 だけ取引を改ざん
+          </button>
+          <button class="ctrl-btn danger" id="btnTamperCouch">
+            VM3 の状態DBを改ざん
+          </button>
+        </div>
+      </div>
+
+      <!-- 中間ブロック改ざんの説明は省略（必要なら復活）
+      <div id="midBlockTamperPanel" class="mid-block-tamper-panel" hidden>
+        <div class="ctrl-divider"></div>
+        <h3>中間ブロック改ざん</h3>
+        <div class="ctrl-row">
+          <select id="midBlockPeer" aria-label="対象ノード">
+            <option value="0">VM1</option>
+            <option value="1" selected>VM2</option>
+            <option value="2">VM3</option>
+          </select>
+          <select id="midBlockNum" aria-label="対象ブロック">
+            <option value="">（中間ブロックなし）</option>
+          </select>
+        </div>
+        <button class="ctrl-btn danger" id="btnTamperMidBlock" data-tutorial-target="mid-block-tamper-button">
+          中間ブロックの値を書き換え
+        </button>
+        <button class="ctrl-btn" id="btnClearMidBlockOverlay" type="button">演出をリセット</button>
+      </div>
+      -->
+
+      <button class="ctrl-btn" id="btnVerify" data-tutorial-target="verify-button" hidden>
+        整合性検証
+      </button>
+      <button class="ctrl-btn" id="btnReset" data-tutorial-target="reset-button">リセット</button>
+
+      <div id="nodeOpsPanel" class="op-group op-group-failure" data-c03-only>
+        <h3><span class="section-number">04</span> 障害を試す</h3>
+        <p id="nodeOpsAvailability" class="ctrl-hint">障害 API を確認中…</p>
+        <div id="nodeOpsStatus" class="node-ops-status" aria-live="polite"></div>
+        <div id="nodeOpsActions" class="node-ops-actions"></div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn" id="btnProbeWrite" type="button">書き込み確認</button>
+          <button class="ctrl-btn" id="btnProbeRead" type="button">読み取り確認</button>
+        </div>
+        <div id="nodeOpsResult" class="node-ops-result" aria-live="polite"></div>
+      </div>
+
+      <details class="advanced-controls" id="advancedControls">
+      <summary id="advancedControlsSummary">実験用ツール</summary>
+      <h3>データの準備</h3>
+      <div class="ctrl-row">
+        <button class="ctrl-btn danger" id="btnResetAll" type="button">ゼロに戻す</button>
+        <button class="ctrl-btn primary" id="btnFillDemo" type="button">デモデータで埋める</button>
+      </div>
+      <label class="ctrl-hint" for="fillRounds">更新の回数
+        <select id="fillRounds">
+          <option value="1" selected>1周（14件）</option>
+          <option value="2">2周（22件）</option>
+          <option value="3">3周（30件）</option>
+        </select>
+      </label>
+      <p class="ctrl-hint" id="dataPrepStatus" aria-live="polite">「ゼロに戻す」はマスタ・ハッシュを空にし、台帳はそこから先だけを表示する（ブロック自体は追記専用なので消えない）。「デモデータで埋める」は備品6件の登録と貸出・返却の更新を台帳に書き込む。</p>
+      <button class="ctrl-btn" id="btnShowAllHistory" type="button" hidden>台帳の全履歴を表示に戻す</button>
+      <div id="fabricResetGroup" hidden>
+        <button class="ctrl-btn danger" id="btnFabricReset" type="button">ブロックチェーンをブロック0から作り直す</button>
+        <p class="ctrl-hint">全VMの台帳データ（ブロック・CouchDB）を削除し、チャネルとチェーンコードを作り直す。数分かかる。</p>
+      </div>
+      <h3>初期データ</h3>
+      <button class="ctrl-btn" id="btnSeedDemo" type="button">
+        発表用の初期データを投入
+      </button>
+      <p class="ctrl-hint">備品マスタを PC-01 / CAM-01 / HDMI-01 の3件に揃える。台帳監査は作らない。</p>
+      </details>
+
+      <details class="log-panel">
+        <summary>操作ログ</summary>
+        <div id="logStream" class="log-stream" aria-live="polite" aria-label="操作ログ"></div>
+      </details>
+    </div>
+
+  </aside>
+
+  <!-- ===== 右下固定（方式切替 + 色） ===== -->
+  <aside class="mockup-br-dock" aria-label="方式切替と色の凡例">
+    <div class="scenario-switcher"><span class="switcher-label">比較方式</span>
+    <div class="scenario-tabs" aria-label="比較方式タブ">
+      <button class="scenario-tab" type="button" data-scenario-tab="c01">単一DB</button>
+      <button class="scenario-tab" type="button" data-scenario-tab="c02">DB＋ハッシュ</button>
+      <button class="scenario-tab is-active" type="button" data-scenario-tab="c03">ブロックチェーン</button>
+      <button class="scenario-tab is-compare" type="button" id="btnCompareView" aria-pressed="false">3方式比較</button>
+    </div>
+    </div>
+    <!-- 接続状態（以前は上のバーの右側にあった） -->
+    <div class="connection-status-banner" id="connectionStatusBanner">
+      <div class="status-row">
+        <div class="status-mode">
+          <span class="status-label">モード:</span>
+          <span class="status-value" id="connectionMode">確認中...</span>
+        </div>
+        <div class="status-nodes">
+          <span class="status-label">ノード:</span>
+          <span class="status-value" id="connectionNodes">-/-</span>
+          <div class="node-indicators" id="nodeIndicators"></div>
+        </div>
+        <div class="status-time">
+          <span class="status-label">更新:</span>
+          <span class="status-value" id="connectionLastUpdate">-</span>
+        </div>
+        <div class="status-actions">
+          <button class="status-refresh-btn" id="statusRefreshBtn" type="button" title="手動更新" aria-label="接続状態と表示データを更新">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <p class="status-explanation" id="displayProvenance"></p>
+      <p class="status-explanation" id="connectionHealthNote" role="status"></p>
+    </div>
+    <div class="meaning-legend" aria-label="色の意味">
+      <span class="legend-item"><span class="legend-chip normal"></span>通常</span>
+      <span class="legend-item"><span class="legend-chip attack"></span>改ざん</span>
+      <span class="legend-item"><span class="legend-chip detected"></span>不一致</span>
+      <span class="legend-item"><span class="legend-chip recovered"></span>一致</span>
+    </div>
+  </aside>
+
+  <script src="assets/demo-mockup-core.js"></script>
+  <script src="assets/demo-mockup-c03.js"></script>
+  <script src="assets/demo-mockup-c01c02.js"></script>
+  <script src="assets/demo-mockup-api.js"></script>
+  <script src="assets/demo-mockup-bind.js"></script>
+  <script src="assets/compare.js"></script>
+  <script src="assets/demo-mockup-compare.js"></script>
+  <script src="assets/demo-mapedit.js"></script>
+  <script src="assets/demo-scenario.js"></script>
+  <script src="assets/tutorial-overlay/tutorial-environment.js"></script>
+  <script src="assets/tutorial-overlay/tutorial-overlay.js"></script>
+  <script src="assets/tutorial-overlay/tutorial-steps-mockup.js"></script>
+  <script src="assets/tutorial-overlay/tutorial-steps-real.js"></script>
+  <script>
+    // 旧チュートリアルは、改ざんモードの切り替えなど今はない操作を前提にしているので、?tutorial=1 のときだけ開く
+    (function () {
+      var on = new URLSearchParams(window.__staticSearch != null ? window.__staticSearch : window.location.search).get('tutorial') === '1';
+      if (!on) return;
+      var start = function () { if (typeof initTutorialIfEnabled === 'function') initTutorialIfEnabled(); };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    })();
+  </script>
+  <script>
+    (function () {
+      var btn = document.getElementById('btnScenarioMenu');
+      var menu = document.getElementById('scenarioMenu');
+      if (!btn || !menu) return;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        menu.hidden = !menu.hidden;
+        btn.setAttribute('aria-expanded', String(!menu.hidden));
+      });
+      document.addEventListener('click', function (e) {
+        if (!menu.hidden && !menu.contains(e.target)) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+/* ==========================================================================
+   demo-mapedit.css — 操作パネルは登録・正規の更新・削除だけ。
+   改ざん・障害はマップを直接触って行う（demo-mapedit.js）
+   ========================================================================== */
+body.mockup-app .op-group-attack,
+body.mockup-app #c02ModeSelector,
+body.mockup-app #nodeOpsPanel { display: none !important; }
+
+/* 触れる場所：カーソルを乗せると枠が出る */
+body.mockup-app:not([data-learn]) [data-db-lane="master"] td.cell-qty,
+body.mockup-app:not([data-learn]) [data-hash-lane="master"] td.cell-stored-hash,
+body.mockup-app:not([data-learn]) .peer-rail > .block:not(.is-genesis),
+body.mockup-app:not([data-learn]) .couchdb .kv-row.is-item,
+body.mockup-app:not([data-learn]) #masterList [data-master] .master-field { cursor: pointer; }
+/* 表のセルなどは外側に枠を出すと隣のセルの線とずれるので、内側に線を引いて薄く塗る */
+body.mockup-app:not([data-learn]) [data-db-lane="master"] td.cell-qty:hover,
+body.mockup-app:not([data-learn]) [data-hash-lane="master"] td.cell-stored-hash:hover,
+body.mockup-app:not([data-learn]) .couchdb .kv-row.is-item:hover,
+body.mockup-app:not([data-learn]) #masterList [data-master] .master-field:hover { outline: none !important; box-shadow: inset 0 0 0 2px #d23c3c !important; background: #fdeeee !important; }
+body.mockup-app:not([data-learn]) .peer-rail > .block:not(.is-genesis):hover { outline: 3px dashed #d23c3c; outline-offset: 3px; }
+body.mockup-app:not([data-learn]) .peer-label { cursor: pointer; }
+body.mockup-app:not([data-learn]) .peer-label:hover { outline: 3px dashed #5b6476; outline-offset: 3px; }

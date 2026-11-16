@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DB+ハッシュ 構成図（図形のみ）。モードA/Bの説明・判定はPowerPoint側 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 360" font-family="'Hiragino Sans', 'Noto Sans JP', sans-serif">
+  <defs>
+    <style>
+      .tbl-body  { fill: #ffffff; stroke: #2563eb; stroke-width: 4; rx: 14; }
+      .tbl-head  { fill: #dbeafe; stroke: #2563eb; stroke-width: 4; }
+      .tbl-title { font-size: 24px; font-weight: 700; fill: #1e40af; text-anchor: middle; }
+      .cell      { font-size: 30px; font-weight: 800; fill: #0f172a; text-anchor: middle; font-family: 'SFMono-Regular', Menlo, monospace; }
+      .cell-red  { fill: #dc2626; }
+      .compare   { stroke: #475569; stroke-width: 5; stroke-dasharray: 8 5; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Entry table (大) -->
+  <g transform="translate(40, 60)">
+    <rect class="tbl-head"  x="0" y="0"  width="220" height="56"/>
+    <rect class="tbl-body"  x="0" y="0"  width="220" height="180" fill="none"/>
+    <text class="tbl-title" x="110" y="38">エントリ表</text>
+    <line x1="0" y1="56" x2="220" y2="56" stroke="#2563eb" stroke-width="3"/>
+    <text class="cell" x="110" y="120" font-size="24">数量</text>
+    <text class="cell cell-red" x="110" y="180">100</text>
+  </g>
+
+  <!-- Hash table (大) -->
+  <g transform="translate(300, 60)">
+    <rect class="tbl-head"  x="0" y="0"  width="220" height="56"/>
+    <rect class="tbl-body"  x="0" y="0"  width="220" height="180" fill="none"/>
+    <text class="tbl-title" x="110" y="38">ハッシュ表</text>
+    <line x1="0" y1="56" x2="220" y2="56" stroke="#2563eb" stroke-width="3"/>
+    <text class="cell" x="110" y="118" font-size="20">hash(数量)</text>
+    <text class="cell" x="110" y="172" font-size="20">a1b2c3…</text>
+  </g>
+
+  <!-- Compare arrow between tables -->
+  <line class="compare" x1="260" y1="150" x2="300" y2="150"/>
+  <path class="compare" d="M 150 300 Q 280 250 410 300"/>
+</svg>

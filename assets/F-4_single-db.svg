@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 単一DB 構成図（図形のみ・見出し/説明はPowerPoint側で付与） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" font-family="'Hiragino Sans', 'Noto Sans JP', sans-serif">
+  <defs>
+    <marker id="f4arrowG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .db-body   { fill: #ffffff; stroke: #dc2626; stroke-width: 4; }
+      .db-top    { fill: #fee2e2; stroke: #dc2626; stroke-width: 4; }
+      .db-label  { font-size: 26px; font-weight: 700; fill: #0f172a; text-anchor: middle; }
+      .db-val    { font-size: 40px; font-weight: 800; fill: #dc2626; text-anchor: middle; font-family: 'SFMono-Regular', Menlo, monospace; }
+      .prop-arrow{ stroke: #94a3b8; stroke-width: 5; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Master DB (大) -->
+  <g transform="translate(170, 30)">
+    <ellipse class="db-top" cx="110" cy="26" rx="110" ry="26"/>
+    <path class="db-body" d="M 0 26 a 110 26 0 0 0 220 0 v 110 a 110 26 0 0 1 -220 0 z"/>
+    <ellipse class="db-top" cx="110" cy="26" rx="110" ry="26"/>
+    <text class="db-label" x="110" y="20">マスタ</text>
+    <text class="db-val"   x="110" y="115">100</text>
+  </g>
+
+  <!-- Propagation arrows -->
+  <line class="prop-arrow" x1="220" y1="320" x2="120" y2="400" marker-end="url(#f4arrowG)"/>
+  <line class="prop-arrow" x1="360" y1="320" x2="460" y2="400" marker-end="url(#f4arrowG)"/>
+
+  <!-- Slave 1 -->
+  <g transform="translate(30, 410)">
+    <ellipse class="db-top" cx="90" cy="22" rx="90" ry="22"/>
+    <path class="db-body" d="M 0 22 a 90 22 0 0 0 180 0 v 86 a 90 22 0 0 1 -180 0 z"/>
+    <ellipse class="db-top" cx="90" cy="22" rx="90" ry="22"/>
+    <text class="db-label" x="90" y="16" font-size="22">スレーブ1</text>
+    <text class="db-val"   x="90" y="92" font-size="34">100</text>
+  </g>
+
+  <!-- Slave 2 -->
+  <g transform="translate(350, 410)">
+    <ellipse class="db-top" cx="90" cy="22" rx="90" ry="22"/>
+    <path class="db-body" d="M 0 22 a 90 22 0 0 0 180 0 v 86 a 90 22 0 0 1 -180 0 z"/>
+    <ellipse class="db-top" cx="90" cy="22" rx="90" ry="22"/>
+    <text class="db-label" x="90" y="16" font-size="22">スレーブ2</text>
+    <text class="db-val"   x="90" y="92" font-size="34">100</text>
+  </g>
+</svg>

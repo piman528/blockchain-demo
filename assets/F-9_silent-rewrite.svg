@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 通常DBで値が静かに書き換わる図（図形のみ）。見出し・パンチラインはPowerPoint側 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 260" font-family="'Hiragino Sans', 'Noto Sans JP', sans-serif">
+  <defs>
+    <marker id="f9big" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <style>
+      .db-top   { fill: #f1f5f9; stroke: #475569; stroke-width: 4; }
+      .db-body  { fill: #ffffff; stroke: #475569; stroke-width: 4; }
+      .db-lab   { font-size: 22px; font-weight: 700; fill: #475569; text-anchor: middle; }
+      .val-old  { font-size: 56px; font-weight: 800; fill: #475569; text-anchor: middle; font-family: 'SFMono-Regular', Menlo, monospace; }
+      .val-new  { font-size: 56px; font-weight: 800; fill: #dc2626; text-anchor: middle; font-family: 'SFMono-Regular', Menlo, monospace; }
+    </style>
+  </defs>
+
+  <!-- Before DB -->
+  <g transform="translate(90, 40)">
+    <ellipse class="db-top" cx="110" cy="24" rx="110" ry="24"/>
+    <path class="db-body" d="M 0 24 a 110 24 0 0 0 220 0 v 110 a 110 24 0 0 1 -220 0 z"/>
+    <ellipse class="db-top" cx="110" cy="24" rx="110" ry="24"/>
+    <text class="db-lab" x="110" y="18">DB</text>
+    <text class="val-old" x="110" y="120">5</text>
+  </g>
+
+  <!-- Rewrite arrow -->
+  <line stroke="#dc2626" stroke-width="6" x1="335" y1="130" x2="445" y2="130" marker-end="url(#f9big)"/>
+
+  <!-- After DB -->
+  <g transform="translate(450, 40)">
+    <ellipse class="db-top" cx="110" cy="24" rx="110" ry="24" stroke="#dc2626"/>
+    <path class="db-body" d="M 0 24 a 110 24 0 0 0 220 0 v 110 a 110 24 0 0 1 -220 0 z" stroke="#dc2626"/>
+    <ellipse class="db-top" cx="110" cy="24" rx="110" ry="24" stroke="#dc2626"/>
+    <text class="db-lab" x="110" y="18" fill="#dc2626">DB</text>
+    <text class="val-new" x="110" y="120">100</text>
+  </g>
+</svg>

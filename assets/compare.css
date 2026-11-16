@@ -1,0 +1,308 @@
+/* 3方式を並べて見る（Mock専用）。共通の見た目は demo-mockup-v2.css の変数と部品を使う。 */
+body.compare-app {
+  --cmp-own: #7c3aed;
+  --cmp-own-soft: #f5f3ff;
+  --cmp-own-ink: #5b21b6;
+  --cmp-other: #0d9488;
+  --cmp-other-soft: #f0fdfa;
+  --cmp-other-ink: #0f766e;
+  --cmp-attack: #dc2626;
+  --cmp-detected: #d97706;
+  --cmp-ok: #16a34a;
+}
+body.mockup-app.compare-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+  font-size: 14px;
+}
+body.compare-app .compare-header { grid-template-columns: minmax(0, 1fr) auto; }
+body.compare-app .compare-header-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; padding-left: 22px; border-left: 1px solid var(--ui-line); }
+body.compare-app .compare-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ui-text); }
+body.compare-app .compare-legend .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+body.compare-app .cmp-owner-chip { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; }
+body.compare-app .cmp-owner-chip.is-own { background: var(--cmp-own-soft); border-color: var(--cmp-own); }
+body.compare-app .cmp-owner-chip.is-other { background: var(--cmp-other-soft); border-color: var(--cmp-other); }
+body.compare-app .compare-back { font-size: 12px; font-weight: 600; color: var(--ui-accent); }
+body.compare-app .compare-stages { display: flex; list-style: none; margin: 12px 0 0; padding: 0; }
+body.compare-app .compare-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+body.compare-app .compare-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 14px 18px; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 14px; }
+body.compare-app .cmp-seg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+body.compare-app .cmp-seg-label { font-size: 13px; font-weight: 700; color: var(--ui-ink); }
+body.compare-app .cmp-seg-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+body.compare-app .cmp-opt { width: auto; margin: 0; display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid #dce3ed; border-radius: 8px; background: #fff; color: var(--ui-text); font-size: 13px; font-weight: 650; cursor: pointer; }
+body.compare-app .cmp-opt:hover { border-color: #b6c4d8; background: #f4f7fb; }
+body.compare-app .cmp-opt[aria-pressed="true"] { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+body.compare-app .cmp-replay { width: auto; margin: 0 0 0 auto; min-height: 40px; padding: 6px 16px; color: var(--ui-accent); border-color: #bfd3fb; }
+
+body.compare-app .compare-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+body.compare-app .cmp-col { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 14px; }
+body.compare-app .cmp-col h2 { margin: 0; text-align: center; font-size: 17px; font-weight: 750; color: var(--ui-ink); }
+body.compare-app .cmp-groups { display: flex; gap: 10px; flex: 1 1 auto; align-items: stretch; }
+body.compare-app .cmp-group { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 2px solid; border-radius: 12px; }
+body.compare-app .cmp-group.is-own { background: var(--cmp-own-soft); border-color: var(--cmp-own); }
+body.compare-app .cmp-group.is-other { background: var(--cmp-other-soft); border-color: var(--cmp-other); }
+body.compare-app .cmp-group-label { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
+body.compare-app .cmp-group.is-own .cmp-group-label { color: var(--cmp-own-ink); }
+body.compare-app .cmp-group.is-other .cmp-group-label { color: var(--cmp-other-ink); }
+
+body.compare-app .cmp-box { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: #fff; border: 1.5px solid #d5dde8; border-radius: 9px; }
+body.compare-app .cmp-box.is-bad { border-color: var(--cmp-attack); }
+body.compare-app .cmp-box.is-down { background: #e8ecf1; border-style: dashed; border-color: #94a3b8; opacity: .6; }
+body.compare-app .cmp-box-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 24px; }
+body.compare-app .cmp-box-name { font-size: 12px; font-weight: 700; color: var(--ui-text); }
+body.compare-app .cmp-box-down { font-size: 11px; font-weight: 700; color: #475569; }
+body.compare-app .cmp-val { font-size: 26px; font-weight: 750; color: var(--ui-ink); font-variant-numeric: tabular-nums; }
+body.compare-app .cmp-box.is-bad .cmp-val, body.compare-app .cmp-blk.is-bad { color: var(--cmp-attack); }
+body.compare-app .cmp-chain { display: flex; align-items: center; gap: 4px; }
+body.compare-app .cmp-blk { font-size: 17px; font-weight: 750; padding: 0 8px; border: 1.5px solid #d5dde8; border-radius: 6px; background: #fff; color: var(--ui-ink); }
+body.compare-app .cmp-blk.is-bad { border-color: var(--cmp-attack); }
+body.compare-app .cmp-arrow { color: #94a3b8; font-size: 12px; }
+body.compare-app .cmp-cmp { display: inline-block; font-size: 15px; font-weight: 750; padding: 0 8px; border-radius: 6px; background: #e2e8f0; color: #334155; }
+body.compare-app .cmp-cmp.is-ne { background: var(--cmp-detected); color: #fff; }
+
+body.compare-app .cmp-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-height: 64px; }
+body.compare-app .cmp-res { padding: 8px; text-align: center; border: 2px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+body.compare-app .cmp-res-k { font-size: 11px; font-weight: 700; color: var(--ui-muted); }
+body.compare-app .cmp-res-v { font-size: 17px; font-weight: 750; color: #64748b; }
+body.compare-app .cmp-res.is-pass { background: var(--cmp-attack); border-color: var(--cmp-attack); }
+body.compare-app .cmp-res.is-caught { background: var(--cmp-detected); border-color: var(--cmp-detected); }
+body.compare-app .cmp-res.is-ng { background: var(--cmp-attack); border-color: var(--cmp-attack); }
+body.compare-app .cmp-res.is-pass *, body.compare-app .cmp-res.is-caught *, body.compare-app .cmp-res.is-ng * { color: #fff; }
+body.compare-app .cmp-res.is-ok { background: #edf8f1; border-color: #86c9a8; }
+body.compare-app .cmp-res.is-ok .cmp-res-v { color: var(--cmp-ok); }
+
+/* 演出 */
+@keyframes cmpFlash { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220,38,38,.7); } 35% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(220,38,38,.22); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220,38,38,0); } }
+@keyframes cmpCopy { 0% { transform: translateY(-8px); opacity: .2; } 60% { transform: translateY(2px); opacity: 1; } 100% { transform: translateY(0); } }
+@keyframes cmpShake { 0%,100% { transform: translateX(0); } 15% { transform: translateX(-10px); } 30% { transform: translateX(10px); } 45% { transform: translateX(-8px); } 60% { transform: translateX(8px); } 75% { transform: translateX(-4px); } }
+@keyframes cmpLock { 0%,100% { transform: scale(1); } 40% { transform: scale(1.9); } }
+@keyframes cmpOff { 0% { opacity: 1; } 15% { opacity: .25; } 30% { opacity: .9; } 45% { opacity: .2; } 60% { opacity: .8; } 100% { opacity: .6; } }
+@keyframes cmpScan { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,0); } 45% { box-shadow: 0 0 0 7px rgba(37,99,235,.5); } 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); } }
+@keyframes cmpPop { 0% { transform: scale(.2); opacity: 0; } 65% { transform: scale(1.35); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes cmpStamp { 0% { transform: scale(2.3) rotate(-10deg); opacity: 0; } 60% { transform: scale(.94) rotate(0); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes cmpPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+body.compare-app .fx-flash { animation: cmpFlash .75s ease-out; }
+body.compare-app .fx-copy { animation: cmpCopy .6s ease-out, cmpFlash .75s ease-out; }
+body.compare-app .fx-shake { animation: cmpShake .6s ease-in-out; }
+body.compare-app .fx-lock { display: inline-flex; animation: cmpLock .6s ease-in-out; }
+body.compare-app .fx-off { animation: cmpOff .8s linear; }
+body.compare-app .fx-scan { animation: cmpScan .7s ease-in-out; }
+body.compare-app .fx-pop { animation: cmpPop .45s ease-out; }
+body.compare-app .fx-stamp { animation: cmpStamp .5s cubic-bezier(.2,.8,.2,1.2); }
+body.compare-app .fx-pulse { animation: cmpPulse .8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  body.compare-app .fx-flash, body.compare-app .fx-copy, body.compare-app .fx-shake, body.compare-app .fx-lock,
+  body.compare-app .fx-off, body.compare-app .fx-scan, body.compare-app .fx-pop, body.compare-app .fx-stamp, body.compare-app .fx-pulse { animation: none; }
+}
+@media (max-width: 760px) {
+  body.compare-app .compare-header { grid-template-columns: 1fr; }
+  body.compare-app .compare-header-side { align-items: flex-start; padding-left: 0; border-left: 0; }
+  body.compare-app .cmp-replay { margin-left: 0; }
+}
+
+/* ===== 台帳マップの中の「3方式比較」タブ =====
+   C-03 のズームできるマップの上に C-01 / C-02 の領域を足して、同じ操作を3方式に同時にかける。
+   旧来の簡易アニメ（compare-stage / compareControls）はタブでは使わない（/admin/compare 単体ページは従来どおり）。 */
+body.mockup-app .compare-stage,
+body.mockup-app #compareControls { display: none !important; }
+
+body.mockup-app .method-region-head-fabric,
+body.mockup-app .all-methods-row { display: none; }
+
+body.mockup-app[data-compare-view="on"] .method-region-head-fabric { display: flex; position: absolute; top: 8px; left: 60px; }
+body.mockup-app[data-compare-view="on"] .peer-divider { margin-top: 64px; }
+body.mockup-app[data-compare-view="on"] .all-methods-row {
+  display: flex; align-items: flex-start; gap: 72px;
+  position: absolute; top: 1240px; left: 60px; /* top は layoutCompareLanes で上書き */
+  padding-top: 36px; border-top: 2px dashed #d5dce8;
+}
+body.mockup-app[data-compare-view="on"] .demo-story-guide { display: none !important; }
+
+body.mockup-app .method-region {
+  background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 14px;
+  padding: 18px 20px 22px; box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+body.mockup-app .method-region[data-method="c01"] { width: 760px; }
+body.mockup-app .method-region[data-method="c02"] { width: 1240px; }
+body.mockup-app .method-region-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 14px;
+  color: var(--ui-text);
+}
+body.mockup-app .method-region-code { font: 800 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ui-accent); background: var(--ui-accent-soft); padding: 6px 8px; border-radius: 6px; }
+body.mockup-app .method-region-name { font-size: 22px; font-weight: 800; color: #1e293b; }
+body.mockup-app .method-region-basis { font-size: 13px; color: var(--ui-muted); }
+body.mockup-app .method-region-note { flex-basis: 100%; font-size: 13px; color: var(--ui-muted); }
+body.mockup-app .method-region-head-fabric .method-region-note { flex-basis: auto; }
+body.mockup-app .method-verdict { font-size: 14px; font-weight: 800; padding: 5px 12px; border-radius: 999px; background: #eef2f7; color: var(--ui-muted); }
+body.mockup-app .method-verdict.is-ok { background: #ecfdf5; color: #047857; }
+body.mockup-app .method-verdict.is-caught { background: #fff7ed; color: #c2410c; box-shadow: inset 0 0 0 1.5px #fb923c; }
+body.mockup-app .method-verdict.is-pass { background: #fef2f2; color: #b91c1c; box-shadow: inset 0 0 0 1.5px #f87171; }
+body.mockup-app .method-verdict.is-cannot { background: #f1f5f9; color: #475569; box-shadow: inset 0 0 0 1.5px #94a3b8; }
+body.mockup-app .method-region-empty { margin: 8px 0; color: var(--ui-muted); font-size: 15px; }
+body.mockup-app .scenario-tab.is-compare { margin-left: 4px; }
+/* 比較表示中は、台帳マップ用のチュートリアルを隠す（戻ると再び表示される） */
+body.mockup-app[data-compare-view="on"] .tutorial-root { display: none !important; }
+body.mockup-app .cmp-mock-chip { padding: 2px 8px; border-radius: 6px; background: #f1f4f9; color: var(--ui-muted); font-weight: 650; }
+
+/* ===== 3方式比較マップ：マシン（VM）ごとに独立した点線の枠で囲み、背景を透かす =====
+   C-01 / C-02 の各マシンも、Fabric の VM レーンと同じ「1台＝1つの枠」に揃える。 */
+body.mockup-app[data-compare-view="on"] {
+  --vm-frame-line: #8b9bb3;
+  --vm-frame-fill: rgba(255, 255, 255, .42);
+  --vm-chip-bg: #eef2f8;
+}
+
+/* 方式の領域そのものはカードにせず、マップに直接置く */
+body.mockup-app[data-compare-view="on"] .method-region {
+  background: transparent; border: 0; box-shadow: none; padding: 0;
+}
+body.mockup-app[data-compare-view="on"] .method-region .comparison-model-card,
+body.mockup-app[data-compare-view="on"] .method-region .db-structure {
+  background: transparent; border: 0; box-shadow: none; padding: 0;
+}
+
+/* マシン同士の間隔を空けて、別々の機械に見せる */
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-stack { gap: 0; --machine-connector-space: 64px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-replicate-arrow { font-size: 13px; color: var(--ui-muted); }
+
+/* 1台ぶんの点線の枠（VM） */
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card,
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card[data-machine] {
+  position: relative; overflow: visible;
+  border: 2px dashed var(--vm-frame-line); border-radius: 18px;
+  background: var(--vm-frame-fill); box-shadow: none;
+  padding: 26px 16px 16px;
+}
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card::before {
+  position: absolute; top: -13px; left: 18px;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--vm-chip-bg); border: 1.5px dashed var(--vm-frame-line);
+  font: 800 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155;
+}
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card[data-machine="master"]::before { content: 'VM1'; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card[data-machine="slave0"]::before { content: 'VM2'; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card[data-machine="slave1"]::before { content: 'VM3'; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card[data-machine] .db-machine-head {
+  background: transparent; border-bottom: 0; padding: 0 2px 10px;
+}
+/* 中の表は白いまま（枠の中だけ透ける） */
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card .db-table { background: #fff; }
+
+/* Fabric の各 VM レーンも同じ点線の枠に */
+body.mockup-app[data-compare-view="on"] .peer-divider { display: none; }
+body.mockup-app[data-compare-view="on"] .peer-lane {
+  width: max-content; min-width: 1100px; height: 340px;
+  padding: 14px 40px 14px 60px;
+  border: 2px dashed var(--vm-frame-line); border-radius: 22px;
+  background: var(--vm-frame-fill);
+}
+
+/* Fabric レーンの折りたたみボタン（3方式比較） */
+body.mockup-app .block-collapse-toggle {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; font: inherit; color: #334155;
+  border: 2px dashed var(--vm-frame-line, #8b9bb3); background: rgba(255, 255, 255, .7);
+}
+body.mockup-app .block-collapse-toggle:hover { background: #fff; border-color: var(--ui-accent); }
+body.mockup-app .block-collapse-toggle .block-collapse-text { font-size: 13px; color: var(--ui-muted); }
+body.mockup-app .block-collapse-toggle .block-collapse-action { font-size: 14px; font-weight: 800; color: var(--ui-accent); }
+
+/* ===== 3方式比較マップ：文字を大きく（カードの幅より文字を大きく拡大して、縮小表示でも読めるように） ===== */
+body.mockup-app[data-compare-view="on"] .block { flex-basis: 380px; }
+/* 起点は中身が少ないので、ほかのブロックほど横に広げない */
+body.mockup-app[data-compare-view="on"] .block.is-genesis { flex: 0 0 150px; padding: 18px 10px; }
+body.mockup-app[data-compare-view="on"] .block.is-genesis .gnum { font-size: 19px; }
+body.mockup-app[data-compare-view="on"] .block-head,
+body.mockup-app[data-compare-view="on"] .block-num { font-size: 19px; }
+body.mockup-app[data-compare-view="on"] .hash-line,
+body.mockup-app[data-compare-view="on"] .hash-line .label,
+body.mockup-app[data-compare-view="on"] .hash-line .val,
+body.mockup-app[data-compare-view="on"] .block .hash-line .val { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .tx,
+body.mockup-app[data-compare-view="on"] .tx-id,
+body.mockup-app[data-compare-view="on"] .tx-row,
+body.mockup-app[data-compare-view="on"] .block .tx-row,
+body.mockup-app[data-compare-view="on"] .tx-row .k,
+body.mockup-app[data-compare-view="on"] .tx-row .v,
+body.mockup-app[data-compare-view="on"] .block .tx-row .v { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .couchdb { flex-basis: 360px; }
+body.mockup-app[data-compare-view="on"] .couchdb-head { font-size: 18px; }
+body.mockup-app[data-compare-view="on"] .kv-row,
+body.mockup-app[data-compare-view="on"] .kv-key,
+body.mockup-app[data-compare-view="on"] .kv-val,
+body.mockup-app[data-compare-view="on"] .kv-section-label { font-size: 16px; }
+body.mockup-app[data-compare-view="on"] .gnum { font-size: 19px; }
+body.mockup-app[data-compare-view="on"] .block-collapse-toggle .block-collapse-text { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .block-collapse-toggle .block-collapse-action { font-size: 19px; }
+
+/* VM のラベル */
+body.mockup-app[data-compare-view="on"] .peer-label { width: 150px; }
+body.mockup-app[data-compare-view="on"] .peer-label .name { font-size: 24px; }
+body.mockup-app[data-compare-view="on"] .peer-label .role,
+body.mockup-app[data-compare-view="on"] .peer-label .status { font-size: 15px; }
+body.mockup-app[data-compare-view="on"] .peer-rail { margin-left: 190px; height: auto; min-height: 100%; }
+/* レーンの高さは中身に合わせる（縦の位置は renderAllMethodsMap で詰め直す） */
+body.mockup-app[data-compare-view="on"] .peer-lane { height: auto; min-height: 340px; }
+
+/* 方式の見出し */
+body.mockup-app[data-compare-view="on"] .method-region-code { font-size: 18px; padding: 7px 10px; }
+body.mockup-app[data-compare-view="on"] .method-region-name { font-size: 32px; }
+body.mockup-app[data-compare-view="on"] .method-region-basis,
+body.mockup-app[data-compare-view="on"] .method-region-note { font-size: 18px; }
+body.mockup-app[data-compare-view="on"] .method-verdict { font-size: 20px; padding: 6px 16px; }
+
+/* C-01 / C-02 の表 */
+body.mockup-app[data-compare-view="on"] .method-region[data-method] { width: max-content; }
+body.mockup-app[data-compare-view="on"] .method-region .db-record-table th,
+body.mockup-app[data-compare-view="on"] .method-region .db-record-table td,
+body.mockup-app[data-compare-view="on"] .method-region .ledger-books-shell.ledger-books-row-linked .db-record-table th,
+body.mockup-app[data-compare-view="on"] .method-region .ledger-books-shell.ledger-books-row-linked .db-record-table td { font-size: 17px; padding: 7px 10px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-table-head,
+body.mockup-app[data-compare-view="on"] .method-region .ledger-books-shell.ledger-books-row-linked .db-table-head { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-table-head span { font-size: 14px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-title { font-size: 19px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-role { font-size: 14px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-machine-card::before { font-size: 16px; top: -15px; }
+body.mockup-app[data-compare-view="on"] .method-region .db-replicate-arrow { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .method-region .hash-link-bridge-badge { font-size: 16px; }
+body.mockup-app[data-compare-view="on"] .method-region-head-fabric .method-region-name { font-size: 32px; }
+
+/* ===== 3方式比較：Fabric の VM も C-01/C-02 と同じ形（点線の枠＋左上の VM 札＋見出し行） ===== */
+body.mockup-app[data-compare-view="on"] .peer-lane { padding: 64px 40px 20px 24px; }
+body.mockup-app[data-compare-view="on"] .peer-lane::before {
+  position: absolute; top: -15px; left: 18px;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--vm-chip-bg); border: 1.5px dashed var(--vm-frame-line);
+  font: 800 16px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155;
+}
+body.mockup-app[data-compare-view="on"] #peerLane0::before { content: 'VM1'; }
+body.mockup-app[data-compare-view="on"] #peerLane1::before { content: 'VM2'; }
+body.mockup-app[data-compare-view="on"] #peerLane2::before { content: 'VM3'; }
+
+/* 左の VM カードを、枠の上部の見出し行にする */
+body.mockup-app[data-compare-view="on"] .peer-label {
+  position: absolute; top: 16px; left: 24px; right: 40px; transform: none;
+  width: auto; display: flex; align-items: center; gap: 12px;
+  padding: 0; background: transparent; border: 0; box-shadow: none; text-align: left;
+}
+body.mockup-app[data-compare-view="on"] .peer-label .name { display: none; }
+body.mockup-app[data-compare-view="on"] .peer-label .role { font-size: 19px; font-weight: 800; color: #1e293b; }
+body.mockup-app[data-compare-view="on"] .peer-label .status { margin: 0; font-size: 14px; }
+body.mockup-app[data-compare-view="on"] .peer-rail { margin-left: 0; }
+
+/* 折りたたみ・省略のカードは細く（ブロックと同じ幅にしない） */
+body.mockup-app .block.block-collapse-toggle,
+body.mockup-app .block.is-omitted,
+body.mockup-app[data-compare-view="on"] .block.block-collapse-toggle,
+body.mockup-app[data-compare-view="on"] .block.is-omitted {
+  flex: 0 0 150px; width: 150px; min-width: 0; max-width: 150px;
+  padding: 14px 10px; gap: 4px; text-align: center; line-height: 1.35;
+}
+body.mockup-app[data-compare-view="on"] .block-collapse-toggle .gnum { font-size: 17px; }
+body.mockup-app[data-compare-view="on"] .block-collapse-toggle .block-collapse-text { font-size: 15px; }
+body.mockup-app[data-compare-view="on"] .block-collapse-toggle .block-collapse-action { font-size: 16px; }
