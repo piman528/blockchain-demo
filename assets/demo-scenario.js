@@ -10,6 +10,53 @@
    画面上の値はブラウザ内のシミュレーション（Mock）。実際のブロックチェーンには書き込まない。
    core / c03 / c01c02 / api / bind / compare の各スクリプトより後に読み込む。
    ========================================================================== */
+/* --------------------------------------------------------------------------
+   体験の記録（シナリオをまたいで、このブラウザの localStorage にためる）
+   シナリオを切り替えるとページを読み込み直すので、S.events は消える。確認テストと見比べられるよう、
+   最後まで見たシナリオと、開いた用語の回数だけを短くためておき、確認テストへのリンクに載せる。
+   リンク（data-survey-link）の URL に __DEMOLOG__ があれば、押したときに記録の文字列へ置き換える。
+   記録は送ったら消す（同じ端末で次の人が続けて体験できるように）。
+   -------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+  const KEY = 'bcdemo-progress-v1';
+  const read = () => {
+    try { return JSON.parse(window.localStorage.getItem(KEY)) || {}; } catch (_) { return {}; }
+  };
+  const write = (p) => {
+    try { window.localStorage.setItem(KEY, JSON.stringify(p)); } catch (_) { /* 保存できない環境では記録しない */ }
+  };
+  function update(fn) {
+    const p = read();
+    p.done = p.done || {};
+    p.terms = p.terms || {};
+    p.gl = p.gl || 0;
+    fn(p);
+    write(p);
+  }
+  /** 例：done=ABD;A=node2.ledger1;B=hash1;gl=2（done＝まとめまで進んだシナリオ、A〜D＝そのシナリオで開いた用語と回数、gl＝用語集を開いた回数） */
+  function code() {
+    const p = read();
+    const parts = [`done=${['a', 'b', 'c', 'd'].filter((s) => p.done && p.done[s]).join('').toUpperCase() || '-'}`];
+    ['a', 'b', 'c', 'd'].forEach((s) => {
+      const t = (p.terms || {})[s];
+      if (t && Object.keys(t).length) parts.push(`${s.toUpperCase()}=${Object.entries(t).map(([k, n]) => `${k}${n}`).join('.')}`);
+    });
+    parts.push(`gl=${p.gl || 0}`);
+    return parts.join(';');
+  }
+  const clear = () => { try { window.localStorage.removeItem(KEY); } catch (_) { /* 何もしない */ } };
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[data-survey-link]');
+    if (!a) return;
+    if (!a.dataset.surveyBase) a.dataset.surveyBase = a.getAttribute('href');
+    const base = a.dataset.surveyBase;
+    if (base.indexOf('__DEMOLOG__') >= 0) a.setAttribute('href', base.replace('__DEMOLOG__', encodeURIComponent(code())));
+    setTimeout(clear, 0);
+  }, true);
+  window.DemoProgress = { update, code, surveyUrl: () => window.__SURVEY_URL__ || '' };
+})();
+
 (function () {
   'use strict';
 
@@ -49,10 +96,170 @@
     startedAt: new Date().toISOString(),
     ready: false,
   };
-  const log = (type, detail = {}) => S.events.push({ t: new Date().toISOString(), type, ...detail });
+  const log = (type, detail = {}) => {
+    S.events.push({ t: new Date().toISOString(), type, ...detail });
+    // 確認テストと見比べるための短い記録（シナリオをまたいでためる）
+    if (!window.DemoProgress) return;
+    if (type === 'term') window.DemoProgress.update((p) => { const t = (p.terms[SCN] = p.terms[SCN] || {}); t[detail.term] = (t[detail.term] || 0) + 1; });
+    else if (type === 'glossary') window.DemoProgress.update((p) => { p.gl += 1; });
+    else if (type === 'summary') window.DemoProgress.update((p) => { p.done[SCN] = 1; });
+  };
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ---------- 用語の解説 ----------
+  // 吹き出し・解説・右パネルの文中の用語に点線の下線を引き、押すとその場で短い説明を出す。
+  // 上部の「用語集」からは一覧を開ける。どの用語を開いたかは記録（S.events）に残し、結果のダウンロードに含める。
+  // words：文中で下線を引く言い方（空なら一覧にだけ載せる）
+  const GLOSSARY = [
+    { group: '全体', items: [
+      { key: 'server', name: 'サーバー（VM1〜VM3）', words: ['サーバー'], desc: 'データを保存したり、申請を受け付けたりするコンピューター。このデモには VM1・VM2・VM3 の3台があり、3つの方式はどれも同じ3台の上で動いています。' },
+      { key: 'record', name: '記録', words: ['記録'], desc: '備品の個数など、ふだん使うデータ。どの方式でも VM1 のデータベースにあり、申請を受け付けるとここが書き換わります。' },
+      { key: 'db', name: 'データベース', words: ['データベース'], desc: 'データを表の形で保存しておく仕組み。単一DB の「DB」は、データベースの略です。' },
+      { key: 'legit', name: '正規の手続き（正規の更新）', words: ['正規の手続き', '正規の更新'], desc: '決められた手続き（更新の申請）を通した更新。このときは記録と一緒に、複製・ハッシュ・ブロックもそろって更新されます。' },
+      { key: 'malware', name: 'マルウェア', words: ['マルウェア'], desc: 'コンピューターに入り込んで、勝手に悪いことをするプログラム。このデモでは、申請を通さずに記録の数値を書き換えます。' },
+      { key: 'verify', name: '照合', words: ['照合'], desc: '2つの値を見比べて、合っているかを確かめること。食い違っていれば、どちらかが手続きを通らずに書き換わったと分かります。' },
+    ] },
+    { group: '単一DB・DB＋ハッシュ', items: [
+      { key: 'single', name: '単一DB', words: [], desc: '記録を1つのデータベース（VM1）に持ち、ほかのサーバーへ自動で複製する方式。' },
+      { key: 'replica', name: '複製', words: ['複製'], desc: '記録を別のサーバー（VM2・VM3）へ自動で写したコピー。中身が正しいかどうかは確かめずに写します。' },
+      { key: 'hashmethod', name: 'DB＋ハッシュ', words: [], desc: '単一DB に加えて、記録から計算したハッシュを保存しておく方式。あとで計算し直して見比べると、書き換えに気付けます。' },
+      { key: 'hash', name: 'ハッシュ', words: ['ハッシュ'], desc: 'データの中身から計算する「指紋」のような値。中身が少しでも変わると、まったく別の値になります。' },
+      { key: 'hashpair', name: 'いまの値・保存した値', words: ['いまの値', '保存した値'], desc: 'DB＋ハッシュ方式の2つのハッシュ。「いまの値」は今の記録から計算したもの、「保存した値」は正規の更新のときに計算して保存しておいたもの。2つが合わなければ、記録が書き換わったと分かります。' },
+      { key: 'sheet', name: '帳票A・帳票B', words: ['帳票A', '帳票B'], desc: 'DB＋ハッシュ方式の表の名前。帳票A は備品のデータ（記録）、帳票B は保存したハッシュです。' },
+    ] },
+    { group: 'ブロックチェーン', items: [
+      { key: 'fabric', name: 'ブロックチェーン', words: [], desc: '取引の履歴（台帳）を、参加しているすべてのノードが同じように持つ仕組み。新しい取引はブロックとして追記され、前のブロックは消しません。' },
+      { key: 'node', name: 'ノード', words: ['ノード'], desc: 'ブロックチェーンに参加している1台1台のサーバーのこと。このデモでは VM1〜VM3 の3台がノードで、どのノードも同じ台帳を持っています。' },
+      { key: 'ledger', name: '台帳', words: ['台帳'], desc: 'ブロックを古い順につないだ、取引の履歴。ノードがそれぞれ同じものを持ちます。書き足すだけで、前のブロックは消しません。' },
+      { key: 'block', name: 'ブロック', words: ['ブロック'], desc: '更新の申請（取引）をまとめた1件分のまとまり。番号（#0、#1…）が付き、台帳の最後に追記されます。' },
+      { key: 'append', name: '追記', words: ['追記'], desc: '前のデータを消さずに、最後に書き足すこと。' },
+      { key: 'prevhash', name: '前のハッシュ', words: ['前のハッシュ'], desc: 'ひとつ前のブロックのハッシュ。各ブロックがこれを持つことで、ブロックが鎖のようにつながります。' },
+      { key: 'checkval', name: '照合用の値', words: ['照合用の値'], desc: 'ブロックに一緒に入っている、そのときの個数から計算したハッシュ。VM1 の記録と見比べるときに使います。' },
+      { key: 'state', name: '状態DB', words: ['状態DB'], desc: '台帳をたどった結果の「いまの値」だけを持つ表。台帳を毎回最初からたどらなくても、今の個数がすぐ分かります。' },
+      { key: 'consensus', name: '合意・過半数', words: ['合意', '過半数'], desc: '新しいブロックを台帳に加えてよいかを、ノードどうしで確かめ合うこと。このデモでは3台中2台以上（過半数）が動いていないと合意できず、書き込めません。' },
+    ] },
+  ];
+  const TERMS = {};
+  GLOSSARY.forEach((g) => g.items.forEach((it) => { TERMS[it.key] = it; }));
+  // 方式の名前の中の「ハッシュ」「ブロック」などには下線を引かない
+  const TERM_PROTECT = ['単一DB', 'DB＋ハッシュ', 'ブロックチェーン'];
+  const WORD_KEY = {};
+  Object.values(TERMS).forEach((it) => it.words.forEach((w) => { WORD_KEY[w] = it.key; }));
+  TERM_PROTECT.forEach((w) => { WORD_KEY[w] = null; });
+  const TERM_RE = new RegExp(Object.keys(WORD_KEY).sort((a, b) => b.length - a.length)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+  const TERM_SKIP = 'button, a, select, input, textarea, label, h2, h3, .scn-co-title, .scn-mini, .scn-co-mark, .scn-term-pop';
+
+  /** root の中の文章で、用語ごとに最初の1か所だけ下線付きのボタンにする */
+  function markTerms(root, where) {
+    if (!root) return;
+    const used = new Set();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement && n.parentElement.closest(TERM_SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      TERM_RE.lastIndex = 0;
+      for (let m = TERM_RE.exec(text); m; m = TERM_RE.exec(text)) {
+        const key = WORD_KEY[m[0]];
+        if (!key || used.has(key)) continue;
+        used.add(key);
+        frag.append(text.slice(last, m.index));
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'scn-term';
+        b.dataset.term = key;
+        b.dataset.where = where;
+        b.textContent = m[0];
+        frag.append(b);
+        last = m.index + m[0].length;
+      }
+      if (!last) return;
+      frag.append(text.slice(last));
+      node.replaceWith(frag);
+    });
+  }
+
+  function closeTermPop() {
+    const pop = $('scnTermPop');
+    if (pop) pop.remove();
+    document.querySelectorAll('.scn-term.is-open').forEach((el) => el.classList.remove('is-open'));
+  }
+  function openTermPop(btn) {
+    const it = TERMS[btn.dataset.term];
+    if (!it) return;
+    const wasOpen = btn.classList.contains('is-open');
+    closeTermPop();
+    if (wasOpen) return; // 同じ用語をもう一度押したら閉じる
+    btn.classList.add('is-open');
+    const pop = document.createElement('div');
+    pop.id = 'scnTermPop';
+    pop.className = 'scn-term-pop';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', `用語の説明：${it.name}`);
+    pop.innerHTML = `<div class="scn-term-pop-head"><b>${esc(it.name)}</b><button type="button" class="scn-term-x" data-term-close aria-label="閉じる">×</button></div>
+      <p>${esc(it.desc)}</p>
+      <button type="button" class="scn-term-more" data-glossary="${it.key}">用語集で見る</button>`;
+    document.body.appendChild(pop);
+    const r = btn.getBoundingClientRect();
+    const w = pop.offsetWidth; const h = pop.offsetHeight; const gap = 8;
+    const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    const top = r.bottom + gap + h <= window.innerHeight - 8 ? r.bottom + gap : Math.max(8, r.top - gap - h);
+    pop.style.left = `${left}px`;
+    pop.style.top = `${top}px`;
+    log('term', { term: it.key, where: btn.dataset.where || '' });
+  }
+
+  function glossaryHtml() {
+    return GLOSSARY.map((g) => `<h3>${esc(g.group)}</h3><dl>${g.items.map((it) => `<div class="scn-gl-item" data-gl-key="${it.key}"><dt>${esc(it.name)}</dt><dd>${esc(it.desc)}</dd></div>`).join('')}</dl>`).join('');
+  }
+  function openGlossary(focusKey, from) {
+    closeTermPop();
+    let el = $('scnGlossary');
+    if (!el) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <aside class="scn-glossary" id="scnGlossary" role="dialog" aria-label="用語集">
+          <div class="scn-gl-head"><h2>用語集</h2><button type="button" class="scn-btn is-ghost" data-glossary-close>閉じる</button></div>
+          <p class="scn-gl-lead">デモに出てくる言葉の説明です。文中の点線の下線が付いた言葉を押しても、その場で見られます。</p>
+          <div class="scn-gl-body">${glossaryHtml()}</div>
+        </aside>`);
+      el = $('scnGlossary');
+    }
+    el.classList.add('is-open');
+    el.querySelectorAll('.scn-gl-item.is-focus').forEach((x) => x.classList.remove('is-focus'));
+    if (focusKey) {
+      const item = el.querySelector(`[data-gl-key="${focusKey}"]`);
+      if (item) { item.classList.add('is-focus'); item.scrollIntoView({ block: 'center' }); }
+    }
+    log('glossary', { from, term: focusKey || '' });
+  }
+  function closeGlossary() {
+    const el = $('scnGlossary');
+    if (el) el.classList.remove('is-open');
+  }
+
+  function bindTerms() {
+    document.addEventListener('click', (e) => {
+      const term = e.target.closest('.scn-term');
+      if (term) { e.preventDefault(); openTermPop(term); return; }
+      const more = e.target.closest('[data-glossary]');
+      if (more) { openGlossary(more.dataset.glossary, more.id === 'scnGlossaryBtn' ? 'header' : 'term'); return; }
+      if (e.target.closest('[data-glossary-close]')) { closeGlossary(); return; }
+      if (e.target.closest('[data-term-close]') || !e.target.closest('.scn-term-pop')) closeTermPop();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if ($('scnTermPop')) closeTermPop();
+      else closeGlossary();
+    });
+    window.addEventListener('resize', closeTermPop);
+  }
 
   // ---------- 画面の骨組み ----------
   function mountShell() {
@@ -63,6 +270,7 @@
         <div class="scn-head" id="scnHead">
           <span class="scn-badge">${NAMES[SCN]}</span>
           <ol class="scn-steps" id="scnSteps"></ol>
+          <button type="button" class="scn-exit scn-gl-btn" id="scnGlossaryBtn" data-glossary="">用語集</button>
           <button type="button" class="scn-exit" id="scnExit">シナリオを終える</button>
         </div>`);
       $('scnExit').addEventListener('click', () => { window.__goDemo(''); });
@@ -93,6 +301,12 @@
     ['複製（レプリケーション）', '自動で複製'],
     ['マスタ', '記録'], // マスタ
     ['スレーブ', '複製'], // スレーブ
+    // 単一DB・DB＋ハッシュの「マシン1〜3」は、ブロックチェーンと同じ VM1〜VM3 の呼び方にそろえる
+    ['マシン3台', '3台のサーバー'],
+    ['各マシン', '各サーバー'],
+    ['マシン1', 'VM1'],
+    ['マシン2', 'VM2'],
+    ['マシン3', 'VM3'],
   ];
   function relabelMap() {
     const world = $('mapWorld');
@@ -326,6 +540,7 @@
         <div class="scn-co-title">${esc(st.title)}</div>
         <div class="scn-co-text">${st.text}</div>
         <button type="button" class="scn-btn scn-co-ok" disabled>3</button>`;
+      markTerms(co.querySelector('.scn-co-text'), 'callout');
       document.body.appendChild(co);
       spotNow.callout = co;
       paintSpot();
@@ -340,7 +555,7 @@
         btn.disabled = false;
         btn.focus();
       }, COUNT_MS);
-      const done = () => { if (btn.disabled) return; document.removeEventListener('keydown', onKey, true); resolve(); };
+      const done = () => { if (btn.disabled) return; document.removeEventListener('keydown', onKey, true); closeTermPop(); resolve(); };
       const onKey = (e) => { if (e.key === 'Enter' && !btn.disabled) { e.preventDefault(); e.stopPropagation(); done(); } };
       btn.addEventListener('click', done);
       document.addEventListener('keydown', onKey, true);
@@ -546,13 +761,13 @@
     render();
     await spot([
       // 単一DB
-      { tone: 'ok', kicker: k, targets: [Q.c01Master], focus: [C01], title: '単一DB：記録の個数が変わった', text: `マシン1の記録が <b>${from}台 → ${qty}台</b> になりました。申請で変わるのは、この数値です。` },
-      { tone: 'ok', kicker: k, targets: [Q.c01Slaves], focus: [C01], title: '単一DB：複製にも写った', text: `マシン2・3 は、記録を自動で写す<b>複製</b>です。同じ <b>${qty}台</b> が写りました。単一DBで一緒に変わるのは、これだけです。` },
+      { tone: 'ok', kicker: k, targets: [Q.c01Master], focus: [C01], title: '単一DB：記録の個数が変わった', text: `VM1 の記録が <b>${from}台 → ${qty}台</b> になりました。申請で変わるのは、この数値です。` },
+      { tone: 'ok', kicker: k, targets: [Q.c01Slaves], focus: [C01], title: '単一DB：複製にも写った', text: `VM2・VM3 は、記録を自動で写す<b>複製</b>です。同じ <b>${qty}台</b> が写りました。単一DBで一緒に変わるのは、これだけです。` },
       // DB＋ハッシュ
       { tone: 'ok', kicker: k, targets: [Q.c02Qty], focus: [C02], title: 'DB＋ハッシュ：記録の個数が変わった', text: `帳票A（備品データ）の個数が <b>${from}台 → ${qty}台</b> になりました。` },
       { tone: 'ok', kicker: k, targets: [Q.c02Current], focus: [C02], title: '「いまの値」が計算し直された', text: '「いまの値」は、記録の中身から計算したハッシュです。個数が変わったので、<b>まったく別の値</b>になりました。' },
       { tone: 'ok', kicker: k, targets: [Q.c02Stored, Q.c02Current], focus: [C02], title: '「保存した値」も新しいハッシュに', text: '正規の手続きでは、更新と同時にハッシュを計算して、帳票B に<b>保存し直します</b>。「いまの値」と「保存した値」がそろっています。' },
-      { tone: 'ok', kicker: k, targets: [Q.c02SlaveQty, Q.c02SlaveHash], focus: [C02], title: 'DB＋ハッシュ：複製にも写った', text: `マシン2・3 にも、新しい個数（${qty}台）と保存した値が写りました。` },
+      { tone: 'ok', kicker: k, targets: [Q.c02SlaveQty, Q.c02SlaveHash], focus: [C02], title: 'DB＋ハッシュ：複製にも写った', text: `VM2・VM3 にも、新しい個数（${qty}台）と保存した値が写りました。` },
       // ブロックチェーン
       ...propagationStops(newBlocks, k),
       { tone: 'ok', kicker: k, targets: [allBlocks], focus: [allBlocks], pad: 60, title: `3台の台帳がそろった：ブロック #${num}`, text: `VM1〜VM3 の台帳に、同じブロック #${num} が追記されました。DB の複製は記録から一方向に写すだけですが、ブロックチェーンでは<b>受け付けたノードから、ほかのノードへ伝わって</b>そろいます。` },
@@ -582,7 +797,7 @@
     render();
     const k = 'マルウェア';
     await spot([
-      { tone: 'danger', kicker: k, targets: [Q.c01Master], focus: [C01], title: '単一DB：記録の数値だけが書き換わった', text: `マルウェアが、申請を通さずに、マシン1の記録の中から <b>${before}</b> を探し出して <b>${TAMPERED_QTY}</b> に書き換えました。` },
+      { tone: 'danger', kicker: k, targets: [Q.c01Master], focus: [C01], title: '単一DB：記録の数値だけが書き換わった', text: `マルウェアが、申請を通さずに、VM1 の記録の中から <b>${before}</b> を探し出して <b>${TAMPERED_QTY}</b> に書き換えました。` },
       { tone: 'danger', kicker: k, targets: [Q.c02Qty], focus: [C02], title: 'DB＋ハッシュ：記録の数値だけが書き換わった', text: `帳票A の個数も <b>${before}台 → ${TAMPERED_QTY}台</b>。` },
       { tone: 'info', kicker: k, targets: [Q.c02Stored], focus: [C02], title: '「保存した値」はそのまま', text: `正規の手続きを通っていないので、ハッシュは計算し直されていません。保存した値は、<b>${before}台のときのハッシュ</b>のままです。` },
       { tone: 'danger', kicker: k, targets: ['.scn-record'], focus: ['#peerLane0', '.scn-record'], pad: 60, title: 'ブロックチェーン：VM1 の記録が書き換わった', text: `VM1 のデータベースの記録も <b>${before}台 → ${TAMPERED_QTY}台</b> に書き換わりました。` },
@@ -604,7 +819,7 @@
     )));
     await sleep(500);
     await spot([
-      { tone: 'danger', kicker: '単一DB', targets: [Q.c01Slaves], focus: [C01], title: '書き換えた値が、複製にもそのまま写った', text: `複製は、記録が正しいかどうかを確かめずに写します。マシン2・3 も <b>${TAMPERED_QTY}台</b> になりました。` },
+      { tone: 'danger', kicker: '単一DB', targets: [Q.c01Slaves], focus: [C01], title: '書き換えた値が、複製にもそのまま写った', text: `複製は、記録が正しいかどうかを確かめずに写します。VM2・VM3 も <b>${TAMPERED_QTY}台</b> になりました。` },
     ]);
     S.phase = 3;
     renderPanel();
@@ -613,7 +828,7 @@
   /** DB＋ハッシュ：照合が合わないので、複製の前に止める */
   async function hashStop() {
     await spot([
-      { tone: 'ok', kicker: 'DB＋ハッシュ', targets: [Q.c02SlaveQty, Q.c02SlaveHash], focus: [C02], title: '複製の前に止めた', text: `照合が合わないので、書き換わった記録は複製へ写しません。マシン2・3 は <b>${BASE_QTY}台</b> のままです。` },
+      { tone: 'ok', kicker: 'DB＋ハッシュ', targets: [Q.c02SlaveQty, Q.c02SlaveHash], focus: [C02], title: '複製の前に止めた', text: `照合が合わないので、書き換わった記録は複製へ写しません。VM2・VM3 は <b>${BASE_QTY}台</b> のままです。` },
       { tone: 'danger', kicker: 'DB＋ハッシュ', targets: [Q.c02Qty], focus: [C02], title: 'トラブルが起きたことは分かる', text: '正規の手続きを通らずに、記録が書き換わったことが分かります。この記録をもとにした更新は止めて、原因を調べられます。' },
     ]);
   }
@@ -654,8 +869,8 @@
         tone: 'danger', kicker: '故障', targets: STOP_LIST.map(vmCards), focus: ['.method-region'], max: 1,
         title: `単一DB・DB＋ハッシュ：${names} が止まった`,
         text: SCN === 'c'
-          ? 'VM1 には、申請を受け付ける<b>記録（マシン1）</b>が載っています。'
-          : 'VM1 の<b>記録（マシン1）</b>と、VM2 の複製（マシン2）が止まりました。',
+          ? 'VM1 には、申請を受け付ける<b>記録</b>が載っています。'
+          : 'VM1 の<b>記録</b>と、VM2 の<b>複製</b>が止まりました。',
       },
       {
         tone: 'danger', kicker: '故障', targets: STOP_LIST.map((i) => `#peerLane${i}`), focus: FOCUS.fabric,
@@ -685,12 +900,12 @@
     const stops = [];
     if (dbUp) {
       stops.push({ tone: 'ok', kicker: k, targets: [Q.c01Master, Q.c02Qty], focus: ['.method-region'], max: 1, title: '単一DB・DB＋ハッシュ：受け付けた', text: `記録が ${before.quantity}台 → <b>${BASE_QTY}台</b> になりました。` });
-      stops.push({ tone: 'ok', kicker: k, targets: [Q.c01Slaves, Q.c02SlaveQty], focus: ['.method-region'], max: 1, title: '複製にも写った', text: `マシン2・3 にも <b>${BASE_QTY}台</b> が写りました。` });
+      stops.push({ tone: 'ok', kicker: k, targets: [Q.c01Slaves, Q.c02SlaveQty], focus: ['.method-region'], max: 1, title: '複製にも写った', text: `VM2・VM3 にも <b>${BASE_QTY}台</b> が写りました。` });
     } else {
       stops.push({
         tone: 'danger', kicker: k, targets: [`${C01} [data-machine="master"]`, `${C02} [data-machine="master"]`], focus: ['.method-region'], max: 1,
         title: '単一DB・DB＋ハッシュ：受け付けられない',
-        text: '申請を受け付けるのは<b>記録（マシン1）だけ</b>です。複製（マシン2・3）は記録を写してバックアップを取るだけで、代わりには受け付けません。<b>VM1 が止まっている限り、受付はできません</b>。',
+        text: '申請を受け付けるのは<b>VM1 の記録だけ</b>です。VM2・VM3 の複製は記録を写してバックアップを取るだけで、代わりには受け付けません。<b>VM1 が止まっている限り、受付はできません</b>。',
       });
     }
     if (ledgerOk) {
@@ -733,8 +948,8 @@
       }
       : { tone: 'info', kicker: k, targets: STOP_LIST.map((i) => `#peerLane${i}`), focus: FOCUS.fabric, title: `ブロックチェーン：${names} が動き出した`, text: '止まっている間に追加されたブロックはないので、受け取るものはありません。申請は書き込まれないままです。' });
     stops.push(lost
-      ? { tone: 'danger', kicker: k, targets: [Q.c01Master, Q.c02Qty], focus: ['.method-region'], max: 1, title: '単一DB・DB＋ハッシュ：申請は消えたまま', text: `マシン1 は動き出しましたが、記録は <b>${item().quantity}台</b> のまま。止まっている間の申請はどこにも残っていないので、出し直す必要があります。` }
-      : { tone: 'ok', kicker: k, targets: [`${C01} [data-machine="master"]`, `${C02} [data-machine="master"]`], focus: ['.method-region'], max: 1, title: '単一DB・DB＋ハッシュ：動き出した', text: 'マシンは動き出しました。' });
+      ? { tone: 'danger', kicker: k, targets: [Q.c01Master, Q.c02Qty], focus: ['.method-region'], max: 1, title: '単一DB・DB＋ハッシュ：申請は消えたまま', text: `VM1 は動き出しましたが、記録は <b>${item().quantity}台</b> のまま。止まっている間の申請はどこにも残っていないので、出し直す必要があります。` }
+      : { tone: 'ok', kicker: k, targets: [`${C01} [data-machine="master"]`, `${C02} [data-machine="master"]`], focus: ['.method-region'], max: 1, title: '単一DB・DB＋ハッシュ：動き出した', text: `${names} は動き出しました。` });
     await spot(stops);
   }
 
@@ -753,7 +968,7 @@
       const slaves = c01SlaveDbItems || slaveDbItems;
       const rows = slaves.map((s, i) => {
         const v = Number(s[ITEM.id]?.quantity);
-        return { text: `記録 ${q}台 ⇄ 複製（マシン${i + 2}） ${v}台`, ok: v === q };
+        return { text: `記録 ${q}台 ⇄ 複製（VM${i + 2}） ${v}台`, ok: v === q };
       });
       return { tampered, rows, found: rows.some((r) => !r.ok) };
     }
@@ -807,7 +1022,7 @@
     const mark = (ok) => `<span class="scn-co-mark ${ok ? 'is-ok' : 'is-ng'}">${ok ? '一致' : '不一致'}</span>`;
     let stops;
     if (id === 'single') {
-      stops = res.rows.map((r, i) => ({ tone: r.ok ? 'info' : 'danger', kicker: k, before: push(r), targets: [Q.c01Master, Q.c01Slave(i)], focus: [C01], title: `記録 ⇄ 複製（マシン${i + 2}）`, text: `${esc(r.text)} ${mark(r.ok)}` }));
+      stops = res.rows.map((r, i) => ({ tone: r.ok ? 'info' : 'danger', kicker: k, before: push(r), targets: [Q.c01Master, Q.c01Slave(i)], focus: [C01], title: `記録 ⇄ 複製（VM${i + 2}）`, text: `${esc(r.text)} ${mark(r.ok)}` }));
     } else if (id === 'hash') {
       stops = res.rows.map((r) => ({ tone: r.ok ? 'info' : 'danger', kicker: k, before: push(r), targets: [Q.c02Current, { t: Q.c02Stored, tone: 'info' }], focus: [C02], title: 'いまの値 ⇄ 保存した値', text: `${esc(r.text)} ${mark(r.ok)}` }));
     } else {
@@ -924,7 +1139,7 @@
         ${btn('data-act="malware"', 'マルウェアを動かす')}`;
     } else if (P === 2) {
       h += `<h2>単一DB：複製はどうなる？</h2>
-        <p>単一DB では、記録が変わると、複製（マシン2・3）へ<b>自動で写されます</b>。</p>
+        <p>単一DB では、記録が変わると、複製（VM2・VM3）へ<b>自動で写されます</b>。</p>
         ${btn('data-act="replicate"', '複製の様子を見る')}`;
     } else if (P === 3) {
       h += `<h2>単一DB：チェックする</h2>
@@ -965,7 +1180,7 @@
     if (P === 0) {
       h += `<h2>${names} を止める</h2>
         <p>3台のサーバー（VM1〜VM3）のうち、<b>${names}</b> が故障で止まった、という状況をつくります。</p>
-        <div class="scn-note">VM1 には、単一DB・DB＋ハッシュの<b>記録（マシン1）</b>と、ブロックチェーンの VM1 のノードが載っています。${SCN === 'd' ? 'VM2 には、複製（マシン2）と VM2 のノードが載っています。' : ''}</div>
+        <div class="scn-note">VM1 には、単一DB・DB＋ハッシュの<b>記録</b>と、ブロックチェーンのノードが載っています。${SCN === 'd' ? 'VM2 には、複製とノードが載っています。' : ''}</div>
         <button type="button" class="scn-btn" data-act="stop">${names} を止める</button>`;
     } else if (P === 1) {
       h += `<h2>申請してみる</h2>
@@ -1006,15 +1221,15 @@
     },
     c: {
       rows: [
-        ['単一DB', '申請を受け付けるのは記録（マシン1）だけ。複製はバックアップを取るだけで代わりに受け付けない。止まると申請は消える', '受け付けられない'],
-        ['DB＋ハッシュ', '単一DBと同じく、記録（マシン1）に頼っている', '受け付けられない'],
+        ['単一DB', '申請を受け付けるのは VM1 の記録だけ。複製はバックアップを取るだけで代わりに受け付けない。止まると申請は消える', '受け付けられない'],
+        ['DB＋ハッシュ', '単一DBと同じく、VM1 の記録に頼っている', '受け付けられない'],
         ['ブロックチェーン', '動いている VM2・VM3 が受け付けて共有する。戻った VM1 は、ほかのノードから追いつく', '続けられる', true],
       ],
       key: 'DB の方式は <b>VM1 が止まっている限り受付できない</b>。ブロックチェーンは、同じ台帳を<b>複数のノード</b>が持つので、<b>どれかのノードが動いていれば受け付けられる</b>（可用性）。',
     },
     d: {
       rows: [
-        ['単一DB', '記録（マシン1）が止まっているので受け付けられない', '受け付けられない'],
+        ['単一DB', 'VM1 の記録が止まっているので受け付けられない', '受け付けられない'],
         ['DB＋ハッシュ', '単一DBと同じ', '受け付けられない'],
         ['ブロックチェーン', '動いているのは1台だけ。台帳は読めるが、書き込むには3台中2台（過半数）の合意が必要', '読み込みのみ', true],
         ['2台が戻ったあと', '3方式とも、出し直した申請を書き込める', '再開'],
@@ -1025,6 +1240,7 @@
   function summaryHtml() {
     const { rows, key } = SUMMARY[SCN];
     const next = NEXT[SCN];
+    const survey = window.DemoProgress ? window.DemoProgress.surveyUrl() : '';
     return `<div class="scn-summary">
       <h3>まとめ</h3>
       ${rows.map(([name, why, res, strong]) => `<div class="scn-sum-row">
@@ -1033,6 +1249,7 @@
       </div>`).join('')}
       <div class="scn-sum-key">${key}</div>
       ${next ? `<a class="scn-btn scn-go-next" href="#scenario-${next}">次へ：${NAMES[next]}</a>` : ''}
+      ${!next && survey ? `<a class="scn-btn scn-go-next" href="${esc(survey)}" target="_blank" rel="noopener" data-survey-link>確認テストへ進む</a>` : ''}
       <button type="button" class="scn-btn is-ghost" data-download>結果をダウンロード</button>
       <button type="button" class="scn-btn is-ghost" data-restart>最初からやり直す</button>
     </div>`;
@@ -1052,6 +1269,7 @@
     const isSummary = h.includes('scn-summary');
     renderSteps(isSummary ? 2 : S.step);
     p.innerHTML = h;
+    markTerms(p, 'panel');
     if (S.auditing) {
       const res = p.querySelector('.scn-res');
       if (res) res.scrollIntoView({ block: 'nearest' });
@@ -1061,13 +1279,14 @@
   }
 
   // ---------- 解説（マップの上に重ねる） ----------
+  const termHint = () => '<p class="scn-term-hint">点線の下線が付いた言葉は、押すと説明が出ます。上の「用語集」からも見られます。</p>';
   function legendHtml() {
     return `<div class="scn-legend"><span class="scn-legend-swatch"></span>青く光った所が、いま見る所（変わった所）です。<span class="scn-legend-swatch is-danger"></span>赤は、正規の手続きを通らない変化です。</div>`;
   }
   const viewList = () => `<ul class="scn-list">
       <li><b>上：ブロックチェーン</b> … VM1〜VM3 の3台のノード。それぞれにブロック（台帳）と状態DB が並ぶ。右に VM1 の記録。</li>
-      <li><b>下の左：単一DB</b> … マシン1（記録）とマシン2・3（複製）。</li>
-      <li><b>下の右：DB＋ハッシュ</b> … 各マシンに、備品データ（帳票A）と保存したハッシュ（帳票B）。</li>
+      <li><b>下の左：単一DB</b> … VM1 の記録と、VM2・VM3 の複製。</li>
+      <li><b>下の右：DB＋ハッシュ</b> … 各サーバー（VM1〜VM3）に、備品データ（帳票A）と保存したハッシュ（帳票B）。</li>
     </ul>`;
   const INTRO_A = [
     () => `<h2>状況</h2>
@@ -1082,11 +1301,13 @@
         <div class="scn-card"><h3>単一DB</h3><div class="scn-mini"><span>記録</span><span>複製</span><span>複製</span></div><p>記録を1つのデータベースに持ち、<b>複製</b>へ自動で写す。</p></div>
         <div class="scn-card"><h3>DB＋ハッシュ</h3><div class="scn-mini"><span>記録</span><span>ハッシュ</span><span>複製</span></div><p>記録に加えて、記録の値から計算した<b>ハッシュ</b>（指紋のような値）を保存しておく。</p></div>
         <div class="scn-card"><h3>ブロックチェーン</h3><div class="scn-mini"><span>VM1 台帳</span><span>VM2 台帳</span><span>VM3 台帳</span></div><p>更新の申請を<b>ブロック</b>として、3台のノードが同じ台帳に追記していく。</p></div>
-      </div>`,
+      </div>
+      <p class="scn-note">3つの方式は、どれも同じ <b>3台のサーバー（VM1〜VM3）</b> の上で動いています。ブロックチェーンでは、この1台1台を<b>ノード</b>と呼びます。</p>`,
     () => `<h2>画面の見方</h2>
       <p class="scn-lead">左のマップには、同じ${ITEM.name}の記録が3つの方式で並んでいます。</p>
       ${viewList()}
       ${legendHtml()}
+      ${termHint()}
       <p>変化があるたびに、変わった所が光って吹き出しが出ます。確かめたら「確認した」を押して進みます。</p>`,
   ];
   const INTRO_B = [
@@ -1115,6 +1336,7 @@
     () => `<h2>画面の見方</h2>
       ${viewList()}
       ${legendHtml()}
+      ${termHint()}
       <p>右のパネルの指示に従って、マルウェア → 単一DB → DB＋ハッシュ → ブロックチェーンの順に確かめます。</p>`,
   ];
   const INTRO_FAIL = [
@@ -1128,17 +1350,18 @@
       <p>3つの方式それぞれで、<b>止まっている間に申請を受け付けられるか</b>を確かめます。${SCN === 'd' ? 'シナリオC との違いは、止まる台数だけです。' : ''}</p>`,
     () => `<h2>受付のしくみ</h2>
       <div class="scn-cards">
-        <div class="scn-card"><h3>単一DB</h3><div class="scn-mini"><span>記録</span><span>複製</span><span>複製</span></div><p>申請を受け付けるのは<b>記録（VM1 のマシン1）だけ</b>。複製はデータのバックアップを取るだけで、代わりには受け付けない。</p></div>
-        <div class="scn-card"><h3>DB＋ハッシュ</h3><div class="scn-mini"><span>記録＋ハッシュ</span><span>複製</span></div><p>単一DBと同じく、<b>記録（マシン1）</b>が受け付ける。</p></div>
+        <div class="scn-card"><h3>単一DB</h3><div class="scn-mini"><span>記録</span><span>複製</span><span>複製</span></div><p>申請を受け付けるのは<b>VM1 の記録だけ</b>。複製はデータのバックアップを取るだけで、代わりには受け付けない。</p></div>
+        <div class="scn-card"><h3>DB＋ハッシュ</h3><div class="scn-mini"><span>記録＋ハッシュ</span><span>複製</span></div><p>単一DBと同じく、<b>VM1 の記録</b>が受け付ける。</p></div>
         <div class="scn-card"><h3>ブロックチェーン</h3><div class="scn-mini"><span>VM1 台帳</span><span>VM2 台帳</span><span>VM3 台帳</span></div><p>どのノードでも申請を受け付け、ほかのノードと共有する。ブロックの追加には<b>3台中2台以上（過半数）の合意</b>が要る。</p></div>
       </div>`,
     () => `<h2>画面の見方</h2>
       <ul class="scn-list">
         <li><b>上：ブロックチェーン</b> … VM1〜VM3 のノード。それぞれにブロック（台帳）と状態DB が並ぶ。</li>
-        <li><b>下の左：単一DB</b>、<b>下の右：DB＋ハッシュ</b> … マシン1（記録）が VM1、マシン2・3（複製）が VM2・VM3 に載っている。</li>
+        <li><b>下の左：単一DB</b>、<b>下の右：DB＋ハッシュ</b> … 記録は VM1、複製は VM2・VM3 に載っている。</li>
         <li><b>止まったサーバー</b> … 灰色になる。</li>
       </ul>
       ${legendHtml()}
+      ${termHint()}
       <p>右のパネルの指示に従って、止める → 申請する → 動かす の順に試します。</p>`,
   ];
   const INTRO_PAGES = { a: INTRO_A, b: INTRO_B, c: INTRO_FAIL, d: INTRO_FAIL }[SCN];
@@ -1147,7 +1370,7 @@
   function tourFail() {
     const k = '見方';
     return spot([
-      { tone: 'info', kicker: k, targets: [vmCards(0), '#peerLane0'], focus: FOCUS.all, max: 1, title: 'VM1 に載っているもの', text: '単一DB・DB＋ハッシュの<b>記録（マシン1）</b>と、ブロックチェーンの <b>VM1 のノード</b>です。' },
+      { tone: 'info', kicker: k, targets: [vmCards(0), '#peerLane0'], focus: FOCUS.all, max: 1, title: 'VM1 に載っているもの', text: '単一DB・DB＋ハッシュの<b>記録</b>と、ブロックチェーンの<b>ノード</b>です。' },
       { tone: 'info', kicker: k, targets: [vmCards(1), vmCards(2), '#peerLane1', '#peerLane2'], focus: FOCUS.all, max: 1, title: 'VM2・VM3 に載っているもの', text: '単一DB・DB＋ハッシュでは、記録を写す<b>複製</b>。ブロックチェーンでは、VM1 と<b>同じ台帳を持つノード</b>です。' },
     ]);
   }
@@ -1173,8 +1396,9 @@
           <button type="button" class="scn-btn" data-intro-next>${last ? '体験を始める' : '次へ'}</button>
         </div>
       </div></div>`);
+    markTerms(document.querySelector('#scnModal .scn-intro'), 'intro');
   }
-  function closeModal() { const m = $('scnModal'); if (m) m.remove(); }
+  function closeModal() { closeTermPop(); const m = $('scnModal'); if (m) m.remove(); }
 
   function startExperience() {
     closeModal();
@@ -1240,6 +1464,7 @@
   async function start() {
     mountShell();
     bind();
+    bindTerms();
     renderPanel();
     await waitForBoot();
     setupWorld();
